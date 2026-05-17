@@ -6,11 +6,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.ReceiptLong
-import androidx.compose.material.icons.rounded.Savings
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +32,8 @@ fun HomeScreen(
     onNavigateToRecord: () -> Unit,
     onNavigateToBillList: () -> Unit,
     onNavigateToStatistics: () -> Unit,
+    onNavigateToSettings: () -> Unit = {},
+    onNavigateToManualRecord: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -46,6 +44,21 @@ fun HomeScreen(
 
     Scaffold(
         containerColor = WarmBackground,
+        topBar = {
+            TopAppBar(
+                title = {},
+                actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            Icons.Rounded.Settings,
+                            contentDescription = "设置",
+                            tint = WarmTextPrimary
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = WarmBackground)
+            )
+        },
         floatingActionButton = {
             LargeFloatingActionButton(
                 onClick = onNavigateToRecord,
@@ -79,7 +92,10 @@ fun HomeScreen(
             Spacer(Modifier.height(16.dp))
             AiTipCard(uiState)
             Spacer(Modifier.height(16.dp))
-            StatisticsEntryCard(onClick = onNavigateToStatistics)
+            ActionRow(
+                onNavigateToStatistics = onNavigateToStatistics,
+                onNavigateToManualRecord = onNavigateToManualRecord
+            )
             Spacer(Modifier.height(16.dp))
             if (uiState.topCategories.isNotEmpty()) {
                 TopCategoriesSection(uiState)
@@ -92,10 +108,111 @@ fun HomeScreen(
                 )
                 Spacer(Modifier.height(16.dp))
             } else {
-                EmptyBillEntry(onClick = onNavigateToBillList)
+                EmptyBillEntry(
+                    onClick = onNavigateToBillList,
+                    onManualRecord = onNavigateToManualRecord,
+                    onAiRecord = onNavigateToRecord
+                )
                 Spacer(Modifier.height(16.dp))
             }
             Spacer(Modifier.height(100.dp)) // Space for FAB
+        }
+    }
+}
+
+@Composable
+private fun ActionRow(
+    onNavigateToStatistics: () -> Unit,
+    onNavigateToManualRecord: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Statistics entry
+        Card(
+            onClick = onNavigateToStatistics,
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = WarmCard),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(WarningLight),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.AutoAwesome,
+                        contentDescription = null,
+                        tint = WarmWarning,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "月度统计",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = WarmTextPrimary,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "消费分析",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = WarmTextSecondary
+                    )
+                }
+            }
+        }
+
+        // Manual record entry
+        Card(
+            onClick = onNavigateToManualRecord,
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = WarmCard),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(ExpenseLight),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.EditNote,
+                        contentDescription = null,
+                        tint = WarmPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "手动记账",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = WarmTextPrimary,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "快速记一笔",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = WarmTextSecondary
+                    )
+                }
+            }
         }
     }
 }
@@ -375,91 +492,72 @@ private fun RecentTransactionsSection(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StatisticsEntryCard(onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = WarmCard),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+private fun EmptyBillEntry(
+    onClick: () -> Unit,
+    onManualRecord: () -> Unit,
+    onAiRecord: () -> Unit
+) {
+    Column {
+        Text(
+            text = "最近账单",
+            style = MaterialTheme.typography.titleLarge,
+            color = WarmTextPrimary
+        )
+        Spacer(Modifier.height(12.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = WarmCard),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(WarningLight),
-                contentAlignment = Alignment.Center
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.AutoAwesome,
+                    Icons.Rounded.ReceiptLong,
                     contentDescription = null,
-                    tint = WarmWarning,
-                    modifier = Modifier.size(22.dp)
+                    tint = WarmTextSecondary.copy(alpha = 0.4f),
+                    modifier = Modifier.size(48.dp)
                 )
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
+                Spacer(Modifier.height(12.dp))
                 Text(
-                    text = "月度统计",
+                    text = "还没有记录，今天可以先轻松记一笔。",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = WarmTextPrimary,
-                    fontWeight = FontWeight.Medium
+                    color = WarmTextSecondary,
+                    textAlign = TextAlign.Center
                 )
+                Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "看看这个月的消费情况",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = WarmTextSecondary
+                    text = "试试输入：午饭35，咖啡18，地铁6",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = WarmTextSecondary.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center
                 )
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onAiRecord,
+                        shape = RoundedCornerShape(18.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = WarmPrimary)
+                    ) {
+                        Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("AI 记一笔")
+                    }
+                    Button(
+                        onClick = onManualRecord,
+                        shape = RoundedCornerShape(18.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary)
+                    ) {
+                        Icon(Icons.Rounded.EditNote, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("手动记一笔")
+                    }
+                }
             }
-            Icon(
-                Icons.Rounded.ChevronRight,
-                contentDescription = null,
-                tint = WarmTextSecondary
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun EmptyBillEntry(onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = WarmCard),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Rounded.ReceiptLong,
-                contentDescription = null,
-                tint = WarmTextSecondary,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = "还没有记录，去轻松记一笔吧",
-                style = MaterialTheme.typography.bodyMedium,
-                color = WarmTextSecondary,
-                modifier = Modifier.weight(1f)
-            )
-            Icon(
-                Icons.Rounded.ChevronRight,
-                contentDescription = null,
-                tint = WarmTextSecondary
-            )
         }
     }
 }

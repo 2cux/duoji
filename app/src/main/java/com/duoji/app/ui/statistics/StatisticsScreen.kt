@@ -31,6 +31,7 @@ import java.time.LocalDate
 @Composable
 fun StatisticsScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToRecord: () -> Unit = {},
     viewModel: StatisticsViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -84,39 +85,78 @@ fun StatisticsScreen(
             } else {
                 val stats = uiState.statistics
 
-                // Monthly overview card
-                MonthlyOverviewCard(stats)
+                if (stats == null || stats.transactionCount == 0) {
+                    // Empty state
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Rounded.Assessment,
+                                contentDescription = null,
+                                tint = WarmTextSecondary.copy(alpha = 0.4f),
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                text = "这个月还没有足够的记录。",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = WarmTextSecondary
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = "先记几笔，月底我再帮你看看钱主要花在哪里。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = WarmTextSecondary.copy(alpha = 0.6f)
+                            )
+                            Spacer(Modifier.height(20.dp))
+                            Button(
+                                onClick = onNavigateToRecord,
+                                shape = RoundedCornerShape(18.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary)
+                            ) {
+                                Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("去记一笔")
+                            }
+                        }
+                    }
+                } else {
+                    // Monthly overview card
+                    MonthlyOverviewCard(stats)
 
-                Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(16.dp))
 
-                // Category breakdown card
-                CategoryBreakdownCard(stats)
+                    // Category breakdown card
+                    CategoryBreakdownCard(stats)
 
-                Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(16.dp))
 
-                // Daily trend card
-                DailyTrendCard(stats)
+                    // Daily trend card
+                    DailyTrendCard(stats)
 
-                Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(16.dp))
 
-                // Top expense card
-                TopExpenseCard(stats)
+                    // Top expense card
+                    TopExpenseCard(stats)
 
-                Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(16.dp))
 
-                // Frequent small expenses card
-                FrequentSmallExpensesCard(stats)
+                    // Frequent small expenses card
+                    FrequentSmallExpensesCard(stats)
 
-                Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(16.dp))
 
-                // AI monthly advice card
-                AiMonthlyAdviceCard(
-                    adviceState = uiState.adviceState,
-                    onGenerate = { viewModel.generateMonthlyAdvice() },
-                    onClearError = { viewModel.clearAdviceError() }
-                )
+                    // AI monthly advice card
+                    AiMonthlyAdviceCard(
+                        adviceState = uiState.adviceState,
+                        onGenerate = { viewModel.generateMonthlyAdvice() },
+                        onClearError = { viewModel.clearAdviceError() }
+                    )
 
-                Spacer(Modifier.height(32.dp))
+                    Spacer(Modifier.height(32.dp))
+                }
             }
         }
     }

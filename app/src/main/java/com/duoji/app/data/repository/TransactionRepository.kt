@@ -86,6 +86,13 @@ class TransactionRepository(private val dao: TransactionDao) {
     fun getTransactionById(id: String): Flow<TransactionEntity?> =
         dao.getTransactionById(id)
 
+    suspend fun getAllTransactionsOnce(): List<TransactionEntity> =
+        dao.getAllTransactionsOnce()
+
+    suspend fun deleteAllTransactions() {
+        dao.deleteAllTransactions()
+    }
+
     companion object {
         fun parseIsoToMillis(iso: String): Long {
             if (iso.isBlank()) return System.currentTimeMillis()

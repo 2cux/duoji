@@ -31,6 +31,7 @@ fun BillListScreen(
     onNavigateToEdit: (String) -> Unit,
     onNavigateToRecord: () -> Unit,
     onNavigateToStatistics: () -> Unit,
+    onNavigateToManualRecord: () -> Unit = {},
     viewModel: BillListViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -136,7 +137,10 @@ fun BillListScreen(
                 }
             } else if (uiState.isEmpty) {
                 item {
-                    EmptyBillState(onClick = onNavigateToRecord)
+                    EmptyBillState(
+                        onAiRecord = onNavigateToRecord,
+                        onManualRecord = onNavigateToManualRecord
+                    )
                 }
             } else {
                 item {
@@ -392,7 +396,7 @@ private fun TransactionItem(
 }
 
 @Composable
-private fun EmptyBillState(onClick: () -> Unit) {
+private fun EmptyBillState(onAiRecord: () -> Unit, onManualRecord: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxWidth().padding(top = 64.dp),
         contentAlignment = Alignment.Center
@@ -410,15 +414,32 @@ private fun EmptyBillState(onClick: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = WarmTextSecondary
             )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "试试输入：午饭35，咖啡18，地铁6",
+                style = MaterialTheme.typography.bodySmall,
+                color = WarmTextSecondary.copy(alpha = 0.6f)
+            )
             Spacer(Modifier.height(20.dp))
-            Button(
-                onClick = onClick,
-                colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary),
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("记一笔")
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = onAiRecord,
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = WarmPrimary)
+                ) {
+                    Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("AI 记一笔")
+                }
+                Button(
+                    onClick = onManualRecord,
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary)
+                ) {
+                    Icon(Icons.Rounded.EditNote, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("手动记一笔")
+                }
             }
         }
     }

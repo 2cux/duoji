@@ -22,6 +22,7 @@ import com.duoji.app.ui.theme.*
 fun RecordScreen(
     onNavigateBack: () -> Unit,
     onNavigateToConfirm: () -> Unit,
+    onNavigateToManualRecord: () -> Unit = {},
     viewModel: RecordViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -157,25 +158,38 @@ fun RecordScreen(
                     colors = CardDefaults.cardColors(containerColor = WarningLight),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp)
                     ) {
-                        Icon(
-                            Icons.Rounded.WarningAmber,
-                            contentDescription = null,
-                            tint = WarmWarning,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            text = uiState.error ?: "",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = WarmTextPrimary,
-                            modifier = Modifier.weight(1f)
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Rounded.WarningAmber,
+                                contentDescription = null,
+                                tint = WarmWarning,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = "识别失败，可以稍后再试，或者手动记一笔。",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = WarmTextPrimary,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Button(
+                            onClick = onNavigateToManualRecord,
+                            shape = RoundedCornerShape(18.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary),
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Icon(Icons.Rounded.EditNote, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("手动记一笔")
+                        }
                     }
                 }
             }

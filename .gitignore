@@ -61,3 +61,8 @@ app/build/tmp/
 # Misc
 tmp/
 temp/
+
+# Export files
+*.csv
+*.json
+exports/
