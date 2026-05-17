@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -32,16 +33,25 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun ConfirmScreen(
     onNavigateBack: () -> Unit,
-    onNavigateHome: () -> Unit,
+    onNavigateToBillList: () -> Unit,
     viewModel: ConfirmViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val transactions = viewModel.transactions
     val errors = viewModel.errors
+    val context = LocalContext.current
 
     LaunchedEffect(uiState.saveSuccess) {
         if (uiState.saveSuccess) {
-            onNavigateHome()
+            android.widget.Toast.makeText(context, "已记录到本地账本", android.widget.Toast.LENGTH_SHORT).show()
+            onNavigateToBillList()
+        }
+    }
+
+    LaunchedEffect(uiState.saveError) {
+        uiState.saveError?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.clearSaveError()
         }
     }
 

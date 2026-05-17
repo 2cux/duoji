@@ -4,10 +4,10 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.duoji.app.DuoJiApplication
 import com.duoji.app.data.model.TransactionDraft
 import com.duoji.app.data.model.TransactionType
 import com.duoji.app.data.store.ParseResultStore
-import com.duoji.app.data.store.TransactionStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,11 +16,14 @@ import kotlinx.coroutines.launch
 data class ConfirmUiState(
     val isSaving: Boolean = false,
     val saveSuccess: Boolean = false,
+    val saveError: String? = null,
     val showDeleteConfirm: Boolean = false,
     val deleteTargetIndex: Int? = null
 )
 
 class ConfirmViewModel : ViewModel() {
+
+    private val repository = DuoJiApplication.instance.container.transactionRepository
 
     private val _transactions = mutableStateListOf<TransactionDraft>()
     val transactions: List<TransactionDraft> get() = _transactions
@@ -85,7 +88,6 @@ class ConfirmViewModel : ViewModel() {
         if (index in _transactions.indices) {
             _transactions.removeAt(index)
             _errors.remove(index)
-            // Shift errors for indices after the removed one
             val shiftedErrors = mutableMapOf<Int, String>()
             _errors.forEach { (idx, msg) ->
                 val newIdx = if (idx > index) idx - 1 else idx
@@ -108,12 +110,11 @@ class ConfirmViewModel : ViewModel() {
     }
 
     fun confirmAll(): Boolean {
-        // Validate: check for missing amounts
         _errors.clear()
         var hasError = false
 
         _transactions.forEachIndexed { index, draft ->
-            if (draft.amount == null || (draft.amountText.isNotBlank() && draft.amount == null)) {
+            if (draft.amount == null) {
                 _errors[index] = "请填写金额"
                 hasError = true
             }
@@ -123,19 +124,27 @@ class ConfirmViewModel : ViewModel() {
             return false
         }
 
-        // Save all transactions
         _uiState.value = _uiState.value.copy(isSaving = true)
 
         viewModelScope.launch {
-            _transactions.forEach { draft ->
-                TransactionStore.save(draft)
+            try {
+                repository.saveDrafts(_transactions.toList())
+                _uiState.value = _uiState.value.copy(
+                    isSaving = false,
+                    saveSuccess = true
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isSaving = false,
+                    saveError = "保存失败，请稍后再试"
+                )
             }
-            _uiState.value = _uiState.value.copy(
-                isSaving = false,
-                saveSuccess = true
-            )
         }
 
         return true
+    }
+
+    fun clearSaveError() {
+        _uiState.value = _uiState.value.copy(saveError = null)
     }
 }

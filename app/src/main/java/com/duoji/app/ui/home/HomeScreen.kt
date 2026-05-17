@@ -8,6 +8,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Savings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.duoji.app.data.local.entity.TransactionEntity
 import com.duoji.app.ui.theme.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -31,6 +34,7 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     onNavigateToRecord: () -> Unit,
+    onNavigateToBillList: () -> Unit,
     viewModel: HomeViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -79,7 +83,13 @@ fun HomeScreen(
                 Spacer(Modifier.height(16.dp))
             }
             if (uiState.transactionCount > 0) {
-                RecentTransactionsSection()
+                RecentTransactionsSection(
+                    recentTransactions = uiState.recentTransactions,
+                    onClick = onNavigateToBillList
+                )
+                Spacer(Modifier.height(16.dp))
+            } else {
+                EmptyBillEntry(onClick = onNavigateToBillList)
                 Spacer(Modifier.height(16.dp))
             }
             Spacer(Modifier.height(100.dp)) // Space for FAB
@@ -297,8 +307,12 @@ private fun CategoryBar(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RecentTransactionsSection() {
+private fun RecentTransactionsSection(
+    recentTransactions: List<TransactionEntity>,
+    onClick: () -> Unit
+) {
     Column {
         Text(
             text = "最近账单",
@@ -307,24 +321,89 @@ private fun RecentTransactionsSection() {
         )
         Spacer(Modifier.height(12.dp))
         Card(
+            onClick = onClick,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
             colors = CardDefaults.cardColors(containerColor = WarmCard),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center
-            ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                recentTransactions.take(3).forEach { tx ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(
+                                    if (tx.type == "income") WarmIncome else WarmExpense
+                                )
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = tx.category,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = WarmTextPrimary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "¥${formatAmount(tx.amount)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (tx.type == "income") WarmIncome else WarmExpense,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "查看更多请前往账单页面",
+                    text = "查看全部账单 →",
                     style = MaterialTheme.typography.bodySmall,
-                    color = WarmTextSecondary,
-                    textAlign = TextAlign.Center
+                    color = WarmPrimary,
+                    modifier = Modifier.align(Alignment.End)
                 )
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EmptyBillEntry(onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = WarmCard),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Rounded.ReceiptLong,
+                contentDescription = null,
+                tint = WarmTextSecondary,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = "还没有记录，去轻松记一笔吧",
+                style = MaterialTheme.typography.bodyMedium,
+                color = WarmTextSecondary,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                Icons.Rounded.ChevronRight,
+                contentDescription = null,
+                tint = WarmTextSecondary
+            )
         }
     }
 }

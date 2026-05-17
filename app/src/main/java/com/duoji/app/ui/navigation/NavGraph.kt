@@ -4,6 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.duoji.app.ui.bill.BillEditScreen
+import com.duoji.app.ui.bill.BillListScreen
 import com.duoji.app.ui.confirm.ConfirmScreen
 import com.duoji.app.ui.home.HomeScreen
 import com.duoji.app.ui.record.RecordScreen
@@ -12,6 +14,10 @@ object Routes {
     const val HOME = "home"
     const val RECORD = "record"
     const val CONFIRM = "confirm"
+    const val BILL_LIST = "billList"
+    const val BILL_EDIT = "billEdit/{transactionId}"
+
+    fun billEdit(transactionId: String) = "billEdit/$transactionId"
 }
 
 @Composable
@@ -26,6 +32,11 @@ fun DuoJiNavGraph(
             HomeScreen(
                 onNavigateToRecord = {
                     navController.navigate(Routes.RECORD)
+                },
+                onNavigateToBillList = {
+                    navController.navigate(Routes.BILL_LIST) {
+                        launchSingleTop = true
+                    }
                 }
             )
         }
@@ -49,8 +60,38 @@ fun DuoJiNavGraph(
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onNavigateHome = {
+                onNavigateToBillList = {
                     navController.popBackStack(Routes.HOME, inclusive = false)
+                    navController.navigate(Routes.BILL_LIST) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+
+        composable(Routes.BILL_LIST) {
+            BillListScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToEdit = { transactionId ->
+                    navController.navigate(Routes.billEdit(transactionId))
+                },
+                onNavigateToRecord = {
+                    navController.navigate(Routes.RECORD) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+
+        composable(Routes.BILL_EDIT) { backStackEntry ->
+            val transactionId = backStackEntry.arguments?.getString("transactionId")
+                ?: return@composable
+            BillEditScreen(
+                transactionId = transactionId,
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
