@@ -88,23 +88,23 @@ class HomeViewModel : ViewModel() {
             topCategories = expenseByCategory,
             transactionCount = count,
             recentTransactions = _uiState.value.recentTransactions,
-            aiTip = generateTip(monthlyExpense, monthlyIncome, count)
+            aiTip = generateTip(monthlyExpense, monthlyIncome, count, expenseByCategory)
         )
     }
 
-    private fun generateTip(expense: Double, income: Double, count: Int): String {
-        return when {
-            count == 0 -> "用起来记录你的第一笔账吧"
-            expense == 0.0 -> "这个月还没有支出记录哦"
-            expense < 500 -> "今天消费节奏还不错，继续保持~"
-            expense < 2000 -> "这个月花得有点快，留意一下哦"
-            else -> "这个月已经支出 ${expense.toLong()} 元了，看看都花在哪了吧"
-        }
+    private fun generateTip(expense: Double, income: Double, count: Int, topCategories: List<Pair<String, Double>>): String {
+        if (count == 0) return "今天也可以轻松记一笔。"
+        if (expense == 0.0) return "这个月还没有支出记录哦"
+        val topCat = topCategories.firstOrNull()?.first
+        if (topCat == "餐饮") return "这个月餐饮有点活跃，可以留意一下外卖和咖啡。"
+        if (topCat == "购物") return "这个月购物记录比较多，可以看看哪些是真正需要的。"
+        if (expense < 500) return "这个月消费节奏还不错。"
+        return "这个月已经支出 ${expense.toLong()} 元了，可以看看都花在哪了。"
     }
 
     companion object {
         fun getDefaultTip(expense: Double): String {
-            return if (expense == 0.0) "用起来记录你的第一笔账吧"
+            return if (expense == 0.0) "今天也可以轻松记一笔。"
             else "今天也要好好记账哦~"
         }
     }

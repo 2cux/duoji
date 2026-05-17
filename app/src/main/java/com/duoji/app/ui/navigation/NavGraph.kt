@@ -9,6 +9,7 @@ import com.duoji.app.ui.bill.BillListScreen
 import com.duoji.app.ui.confirm.ConfirmScreen
 import com.duoji.app.ui.home.HomeScreen
 import com.duoji.app.ui.record.RecordScreen
+import com.duoji.app.ui.statistics.StatisticsScreen
 
 object Routes {
     const val HOME = "home"
@@ -16,6 +17,7 @@ object Routes {
     const val CONFIRM = "confirm"
     const val BILL_LIST = "billList"
     const val BILL_EDIT = "billEdit/{transactionId}"
+    const val STATISTICS = "statistics"
 
     fun billEdit(transactionId: String) = "billEdit/$transactionId"
 }
@@ -35,6 +37,11 @@ fun DuoJiNavGraph(
                 },
                 onNavigateToBillList = {
                     navController.navigate(Routes.BILL_LIST) {
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToStatistics = {
+                    navController.navigate(Routes.STATISTICS) {
                         launchSingleTop = true
                     }
                 }
@@ -81,6 +88,11 @@ fun DuoJiNavGraph(
                     navController.navigate(Routes.RECORD) {
                         launchSingleTop = true
                     }
+                },
+                onNavigateToStatistics = {
+                    navController.navigate(Routes.STATISTICS) {
+                        launchSingleTop = true
+                    }
                 }
             )
         }
@@ -90,6 +102,14 @@ fun DuoJiNavGraph(
                 ?: return@composable
             BillEditScreen(
                 transactionId = transactionId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(Routes.STATISTICS) {
+            StatisticsScreen(
                 onNavigateBack = {
                     navController.popBackStack()
                 }

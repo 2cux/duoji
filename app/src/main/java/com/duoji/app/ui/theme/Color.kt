@@ -1,6 +1,9 @@
 package com.duoji.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
 
 val WarmBackground = Color(0xFFFFF7EF)
 val WarmPrimary = Color(0xFFFF9F5A)
@@ -50,4 +53,23 @@ fun categoryColor(category: String): Color = when (category) {
     "人情" -> CategorySocial
     "旅行" -> CategoryTravel
     else -> CategoryOther
+}
+
+fun iconForCategory(category: String): ImageVector = when (category) {
+    "餐饮" -> Icons.Rounded.Restaurant
+    "交通" -> Icons.Rounded.DirectionsCar
+    "购物" -> Icons.Rounded.ShoppingCart
+    "居住" -> Icons.Rounded.Home
+    "娱乐" -> Icons.Rounded.Movie
+    "学习" -> Icons.Rounded.School
+    "医疗" -> Icons.Rounded.LocalHospital
+    "通讯" -> Icons.Rounded.Phone
+    "人情" -> Icons.Rounded.Favorite
+    "旅行" -> Icons.Rounded.Flight
+    "工资" -> Icons.Rounded.Business
+    "副业" -> Icons.Rounded.Computer
+    "红包" -> Icons.Rounded.CardGiftcard
+    "退款" -> Icons.Rounded.Reply
+    "其他收入", "其他" -> Icons.Rounded.ReceiptLong
+    else -> Icons.Rounded.ReceiptLong
 }

@@ -30,6 +30,7 @@ fun BillListScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEdit: (String) -> Unit,
     onNavigateToRecord: () -> Unit,
+    onNavigateToStatistics: () -> Unit,
     viewModel: BillListViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -76,7 +77,16 @@ fun BillListScreen(
                         Icon(Icons.Rounded.ArrowBack, contentDescription = "返回", tint = WarmTextPrimary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = WarmBackground)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = WarmBackground),
+                actions = {
+                    IconButton(onClick = onNavigateToStatistics) {
+                        Icon(
+                            Icons.Rounded.AutoAwesome,
+                            contentDescription = "统计",
+                            tint = WarmTextPrimary
+                        )
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -411,27 +421,6 @@ private fun EmptyBillState(onClick: () -> Unit) {
                 Text("记一笔")
             }
         }
-    }
-}
-
-private fun iconForCategory(category: String): androidx.compose.ui.graphics.vector.ImageVector {
-    return when (category) {
-        "餐饮" -> Icons.Rounded.Restaurant
-        "交通" -> Icons.Rounded.DirectionsCar
-        "购物" -> Icons.Rounded.ShoppingCart
-        "居住" -> Icons.Rounded.Home
-        "娱乐" -> Icons.Rounded.Movie
-        "学习" -> Icons.Rounded.School
-        "医疗" -> Icons.Rounded.LocalHospital
-        "通讯" -> Icons.Rounded.Phone
-        "人情" -> Icons.Rounded.Favorite
-        "旅行" -> Icons.Rounded.Flight
-        "工资" -> Icons.Rounded.Business
-        "副业" -> Icons.Rounded.Computer
-        "红包" -> Icons.Rounded.CardGiftcard
-        "退款" -> Icons.Rounded.Reply
-        "其他收入", "其他" -> Icons.Rounded.ReceiptLong
-        else -> Icons.Rounded.ReceiptLong
     }
 }
 

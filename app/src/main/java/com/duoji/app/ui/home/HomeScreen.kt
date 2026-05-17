@@ -35,6 +35,7 @@ import java.util.Locale
 fun HomeScreen(
     onNavigateToRecord: () -> Unit,
     onNavigateToBillList: () -> Unit,
+    onNavigateToStatistics: () -> Unit,
     viewModel: HomeViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -77,6 +78,8 @@ fun HomeScreen(
             HeroCard(uiState)
             Spacer(Modifier.height(16.dp))
             AiTipCard(uiState)
+            Spacer(Modifier.height(16.dp))
+            StatisticsEntryCard(onClick = onNavigateToStatistics)
             Spacer(Modifier.height(16.dp))
             if (uiState.topCategories.isNotEmpty()) {
                 TopCategoriesSection(uiState)
@@ -366,6 +369,59 @@ private fun RecentTransactionsSection(
                     modifier = Modifier.align(Alignment.End)
                 )
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StatisticsEntryCard(onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = WarmCard),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(WarningLight),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.AutoAwesome,
+                    contentDescription = null,
+                    tint = WarmWarning,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "月度统计",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = WarmTextPrimary,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "看看这个月的消费情况",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = WarmTextSecondary
+                )
+            }
+            Icon(
+                Icons.Rounded.ChevronRight,
+                contentDescription = null,
+                tint = WarmTextSecondary
+            )
         }
     }
 }
