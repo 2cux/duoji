@@ -1,11 +1,63 @@
-*.iml
-.gradle
-/local.properties
-/.idea
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# Gradle
+.gradle/
+build/
+*/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local configuration
 local.properties
-/app/build
+*.local
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Android generated files
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Kotlin / Java
+*.kotlin_module
+
+# Keystore / signing files
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+
+# Secrets / API keys
+.env
+.env.*
+!.env.example
+secrets.properties
+api_keys.properties
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test / coverage outputs
+coverage/
+*.ec
+*.exec
+
+# Navigation / generated Compose reports
+app/build/generated/
+app/build/intermediates/
+app/build/tmp/
+
+# Misc
+tmp/
+temp/
