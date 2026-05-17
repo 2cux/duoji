@@ -1,6 +1,7 @@
 package com.duoji.app.data.ai
 
 import com.duoji.app.data.model.*
+import com.duoji.app.data.settings.SettingsRepository
 import com.duoji.app.domain.statistics.MonthlyStatistics
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -10,12 +11,11 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 
 class MonthlyAdviceRepository(
-    private val apiKey: String = "",
-    private val apiBaseUrl: String = "https://api.openai.com/v1/chat/completions",
-    private val model: String = "gpt-4o-mini"
+    private val settingsRepository: SettingsRepository
 ) {
     private val json = Json {
         ignoreUnknownKeys = true
@@ -34,9 +34,16 @@ class MonthlyAdviceRepository(
     }
 
     suspend fun generateAdvice(statistics: MonthlyStatistics): String {
-        if (apiKey.isNotBlank()) {
+        val settings = settingsRepository.settingsFlow.first()
+
+        val canUseDeepSeek = settings.useRealAI
+                && settings.apiBaseUrl.isNotBlank()
+                && settings.apiKey.isNotBlank()
+                && settings.modelName.isNotBlank()
+
+        if (canUseDeepSeek) {
             try {
-                return generateWithAI(statistics)
+                return generateWithDeepSeek(statistics, settings.apiBaseUrl, settings.apiKey, settings.modelName)
             } catch (_: Exception) {
                 // Fallback to local
             }
@@ -44,24 +51,30 @@ class MonthlyAdviceRepository(
         return LocalMonthlyAdviceGenerator.generate(statistics)
     }
 
-    private suspend fun generateWithAI(statistics: MonthlyStatistics): String {
+    private suspend fun generateWithDeepSeek(
+        statistics: MonthlyStatistics,
+        apiBaseUrl: String,
+        apiKey: String,
+        modelName: String
+    ): String {
+        val endpoint = apiBaseUrl.trimEnd('/') + "/chat/completions"
         val prompt = MonthlyAdvicePromptBuilder.buildPrompt(statistics)
 
         val request = AIParseRequest(
-            model = model,
+            model = modelName,
             messages = listOf(
                 AIMessage(role = "user", content = prompt)
             )
         )
 
-        val response: AIResponse = client.post(apiBaseUrl) {
+        val response: AIResponse = client.post(endpoint) {
             header("Authorization", "Bearer $apiKey")
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
 
         response.error?.let { error ->
-            throw Exception("API 错误: ${error.message}")
+            throw Exception("API 错误")
         }
 
         return response.choices.firstOrNull()?.message?.content

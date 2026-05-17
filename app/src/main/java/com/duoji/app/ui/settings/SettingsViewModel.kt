@@ -13,9 +13,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class SettingsUiState(
-    val apiBaseUrl: String = "",
+    val apiBaseUrl: String = "https://api.deepseek.com",
     val apiKey: String = "",
-    val modelName: String = "",
+    val modelName: String = "deepseek-v4-flash",
+    val useRealAI: Boolean = false,
     val useWarmReminder: Boolean = true,
     val exportMessage: String? = null,
     val errorMessage: String? = null,
@@ -42,11 +43,12 @@ class SettingsViewModel : ViewModel() {
 
     fun loadSettings() {
         viewModelScope.launch {
-            val settings = settingsRepository.settings.first()
+            val settings = settingsRepository.settingsFlow.first()
             _uiState.value = _uiState.value.copy(
                 apiBaseUrl = settings.apiBaseUrl,
                 apiKey = settings.apiKey,
                 modelName = settings.modelName,
+                useRealAI = settings.useRealAI,
                 useWarmReminder = settings.useWarmReminder
             )
         }
@@ -64,19 +66,33 @@ class SettingsViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(modelName = value)
     }
 
+    fun updateUseRealAI(value: Boolean) {
+        _uiState.value = _uiState.value.copy(useRealAI = value)
+    }
+
     fun updateWarmReminder(value: Boolean) {
         _uiState.value = _uiState.value.copy(useWarmReminder = value)
     }
 
-    fun saveSettings() {
+    fun saveAISettings() {
         viewModelScope.launch {
             val s = _uiState.value
-            settingsRepository.saveSettings(
+            settingsRepository.saveAISettings(
                 apiBaseUrl = s.apiBaseUrl,
                 apiKey = s.apiKey,
                 modelName = s.modelName,
-                useWarmReminder = s.useWarmReminder
+                useRealAI = s.useRealAI
             )
+            _uiState.value = _uiState.value.copy(
+                exportMessage = "AI 设置已保存。"
+            )
+        }
+    }
+
+    fun updateAndSaveWarmReminder(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(useWarmReminder = enabled)
+        viewModelScope.launch {
+            settingsRepository.saveWarmReminder(enabled)
         }
     }
 

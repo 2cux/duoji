@@ -2,6 +2,7 @@ package com.duoji.app.ui.record
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.duoji.app.DuoJiApplication
 import com.duoji.app.data.model.TransactionDraft
 import com.duoji.app.data.repository.AIRepository
 import com.duoji.app.data.store.ParseResultStore
@@ -19,7 +20,9 @@ data class RecordUiState(
 
 class RecordViewModel : ViewModel() {
 
-    private val repository = AIRepository()
+    private val repository = AIRepository(
+        DuoJiApplication.instance.container.settingsRepository
+    )
 
     private val _uiState = MutableStateFlow(RecordUiState())
     val uiState: StateFlow<RecordUiState> = _uiState.asStateFlow()

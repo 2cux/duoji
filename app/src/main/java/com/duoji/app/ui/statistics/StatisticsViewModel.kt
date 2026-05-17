@@ -29,7 +29,9 @@ class StatisticsViewModel : ViewModel() {
     private val repository: TransactionRepository =
         DuoJiApplication.instance.container.transactionRepository
 
-    private val adviceRepository = MonthlyAdviceRepository()
+    private val adviceRepository = MonthlyAdviceRepository(
+        DuoJiApplication.instance.container.settingsRepository
+    )
 
     private val useCase = StatisticsUseCase()
 

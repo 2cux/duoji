@@ -171,7 +171,7 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // ---- AI Settings ----
+            // ---- DeepSeek AI Settings ----
             SettingsSectionHeader("AI 设置")
             Spacer(Modifier.height(8.dp))
 
@@ -182,36 +182,43 @@ fun SettingsScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "当前解析模式",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = WarmTextPrimary
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .background(
-                                    if (uiState.apiKey.isNotBlank()) IncomeLight else ExpenseLight
-                                )
-                                .padding(horizontal = 10.dp, vertical = 3.dp)
-                        ) {
+                    // Use DeepSeek toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = if (uiState.apiKey.isNotBlank()) "真实 AI" else "本地模拟",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (uiState.apiKey.isNotBlank()) WarmIncome else WarmAccent
+                                text = "使用 DeepSeek V4 Flash",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = WarmTextPrimary,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "开启后优先调用 DeepSeek 解析记账文本",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = WarmTextSecondary
                             )
                         }
+                        Switch(
+                            checked = uiState.useRealAI,
+                            onCheckedChange = { viewModel.updateUseRealAI(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = WarmPrimary,
+                                checkedTrackColor = WarmPrimary.copy(alpha = 0.3f)
+                            )
+                        )
                     }
 
                     Spacer(Modifier.height(16.dp))
 
+                    // API Base URL
                     OutlinedTextField(
                         value = uiState.apiBaseUrl,
                         onValueChange = { viewModel.updateApiBaseUrl(it) },
                         label = { Text("API Base URL") },
-                        placeholder = { Text("https://api.openai.com/v1") },
+                        placeholder = { Text("https://api.deepseek.com") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(14.dp),
@@ -221,6 +228,7 @@ fun SettingsScreen(
 
                     Spacer(Modifier.height(12.dp))
 
+                    // API Key
                     OutlinedTextField(
                         value = uiState.apiKey,
                         onValueChange = { viewModel.updateApiKey(it) },
@@ -245,11 +253,12 @@ fun SettingsScreen(
 
                     Spacer(Modifier.height(12.dp))
 
+                    // Model name
                     OutlinedTextField(
                         value = uiState.modelName,
                         onValueChange = { viewModel.updateModelName(it) },
                         label = { Text("模型名称") },
-                        placeholder = { Text("gpt-4o-mini") },
+                        placeholder = { Text("deepseek-v4-flash") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(14.dp),
@@ -259,14 +268,52 @@ fun SettingsScreen(
 
                     Spacer(Modifier.height(16.dp))
 
+                    // Status text
+                    val statusText = when {
+                        !uiState.useRealAI -> "当前使用本地模拟解析，不会上传数据。"
+                        uiState.apiKey.isBlank() -> "还没有填写 DeepSeek API Key，将继续使用本地模拟解析。"
+                        else -> "当前将优先使用 DeepSeek V4 Flash，失败时自动切回本地解析。"
+                    }
+                    Row(
+                        verticalAlignment = Alignment.Top,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            Icons.Rounded.Info,
+                            contentDescription = null,
+                            tint = WarmPrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = statusText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = WarmTextSecondary,
+                            lineHeight = MaterialTheme.typography.bodySmall.lineHeight
+                        )
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Save button
                     Button(
-                        onClick = { viewModel.saveSettings() },
+                        onClick = { viewModel.saveAISettings() },
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         shape = RoundedCornerShape(18.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary)
                     ) {
-                        Text("保存设置")
+                        Text("保存 AI 设置")
                     }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // Privacy notice
+                    Text(
+                        text = "开启 DeepSeek 后，记账文本会发送到你配置的 DeepSeek API 用于解析；不开启时仅使用本地模拟解析，不上传数据。",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = WarmTextSecondary.copy(alpha = 0.7f),
+                        lineHeight = MaterialTheme.typography.labelSmall.lineHeight
+                    )
                 }
             }
 
@@ -306,10 +353,7 @@ fun SettingsScreen(
                         }
                         Switch(
                             checked = uiState.useWarmReminder,
-                            onCheckedChange = {
-                                viewModel.updateWarmReminder(it)
-                                viewModel.saveSettings()
-                            },
+                            onCheckedChange = { viewModel.updateAndSaveWarmReminder(it) },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = WarmPrimary,
                                 checkedTrackColor = WarmPrimary.copy(alpha = 0.3f)
