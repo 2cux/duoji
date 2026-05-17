@@ -57,6 +57,13 @@ fun BillEditScreen(
         }
     }
 
+    LaunchedEffect(state.loadError) {
+        state.loadError?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+            onNavigateBack()
+        }
+    }
+
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showCategoryDropdown by remember { mutableStateOf(false) }

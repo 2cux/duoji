@@ -34,7 +34,8 @@ data class EditTransactionState(
     val updatedAt: Long = 0L,
     val isSaving: Boolean = false,
     val saveSuccess: Boolean = false,
-    val saveError: String? = null
+    val saveError: String? = null,
+    val loadError: String? = null
 )
 
 class BillEditViewModel : ViewModel() {
@@ -65,6 +66,11 @@ class BillEditViewModel : ViewModel() {
                         needUserConfirm = entity.needUserConfirm,
                         createdAt = entity.createdAt,
                         updatedAt = entity.updatedAt
+                    )
+                } else {
+                    _state.value = _state.value.copy(
+                        isLoading = false,
+                        loadError = "账单未找到"
                     )
                 }
             }

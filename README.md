@@ -132,9 +132,9 @@ App 默认使用**本地模拟解析模式**，即不配置任何 AI Key 也能�
 如需接入真实 AI（如 OpenAI 兼容 API）：
 
 1. 进入"设置" → "AI 设置"
-2. 填写 API Base URL（默认 https://api.openai.com/v1）
+2. 填写 API Base URL（默认 https://api.deepseek.com）
 3. 填写 API Key
-4. 填写模型名称（如 gpt-4o-mini）
+4. 填写模型名称（默认 deepseek-v4-flash）
 5. 点击"保存设置"
 
 > 注意：API Key 仅保存在本机 DataStore 中，当前阶段未加密存储。正式发布时应使用 EncryptedSharedPreferences 或更安全的密钥管理方案。

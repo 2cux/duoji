@@ -14,7 +14,7 @@ object JsonExportBuilder {
         val sb = StringBuilder()
         sb.appendLine("{")
         sb.appendLine("  \"app\": \"duoji\",")
-        sb.appendLine("  \"version\": \"0.1.0\",")
+        sb.appendLine("  \"version\": \"1.0.0\",")
         sb.appendLine("  \"exported_at\": \"$now\",")
         sb.appendLine("  \"transaction_count\": ${transactions.size},")
         sb.appendLine("  \"transactions\": [")
