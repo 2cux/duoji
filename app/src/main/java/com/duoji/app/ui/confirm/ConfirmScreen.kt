@@ -1,6 +1,7 @@
 package com.duoji.app.ui.confirm
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,6 +25,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.duoji.app.data.model.TransactionDraft
 import com.duoji.app.data.model.TransactionType
+import com.duoji.app.ui.components.animation.AnimatedAmountText
+import com.duoji.app.ui.components.animation.AnimatedSection
 import com.duoji.app.ui.theme.*
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -40,6 +43,9 @@ fun ConfirmScreen(
     val transactions = viewModel.transactions
     val errors = viewModel.errors
     val context = LocalContext.current
+
+    // Track which indices are being deleted (for exit animation)
+    val deletingIndices = remember { mutableStateOf(setOf<Int>()) }
 
     LaunchedEffect(uiState.saveSuccess) {
         if (uiState.saveSuccess) {
@@ -65,7 +71,13 @@ fun ConfirmScreen(
                 Text("删除后无法恢复，确认删除吗？", style = MaterialTheme.typography.bodyMedium)
             },
             confirmButton = {
-                TextButton(onClick = { viewModel.confirmDelete() }) {
+                TextButton(onClick = {
+                    val targetIndex = uiState.deleteTargetIndex
+                    if (targetIndex != null) {
+                        deletingIndices.value = deletingIndices.value + targetIndex
+                    }
+                    viewModel.confirmDelete()
+                }) {
                     Text("删除", color = WarmAccent, fontWeight = FontWeight.SemiBold)
                 }
             },
@@ -131,30 +143,49 @@ fun ConfirmScreen(
             item {
                 Spacer(Modifier.height(8.dp))
                 // Header
-                Text(
-                    text = "AI识别到 ${transactions.size} 笔账单",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = WarmTextPrimary
-                )
-                Text(
-                    text = "请确认以下信息，可以修改后保存",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = WarmTextSecondary
-                )
+                AnimatedSection(delayMillis = 0, animDuration = 350) {
+                    Column {
+                        Text(
+                            text = "AI识别到 ${transactions.size} 笔账单",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = WarmTextPrimary
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "请确认以下信息，可以修改后保存",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = WarmTextSecondary
+                        )
+                    }
+                }
                 Spacer(Modifier.height(16.dp))
             }
 
             itemsIndexed(transactions) { index, draft ->
-                TransactionEditCard(
-                    index = index,
-                    draft = draft,
-                    error = errors[index],
-                    onUpdateAmount = { viewModel.updateAmount(index, it) },
-                    onUpdateCategory = { viewModel.updateCategory(index, it) },
-                    onUpdateNote = { viewModel.updateNote(index, it) },
-                    onUpdateOccurredAt = { viewModel.updateOccurredAt(index, it) },
-                    onDelete = { viewModel.requestDelete(index) }
-                )
+                val isDeleting = index in deletingIndices.value
+
+                AnimatedVisibility(
+                    visible = !isDeleting,
+                    enter = fadeIn(animationSpec = tween(400, delayMillis = index * 50)) +
+                            slideInVertically(animationSpec = tween(400, delayMillis = index * 50)) { it / 2 },
+                    exit = fadeOut(animationSpec = tween(300)) +
+                            shrinkVertically(animationSpec = tween(300))
+                ) {
+                    TransactionEditCard(
+                        index = index,
+                        draft = draft,
+                        error = errors[index],
+                        totalTransactions = transactions.size,
+                        onUpdateAmount = { viewModel.updateAmount(index, it) },
+                        onUpdateCategory = { viewModel.updateCategory(index, it) },
+                        onUpdateNote = { viewModel.updateNote(index, it) },
+                        onUpdateOccurredAt = { viewModel.updateOccurredAt(index, it) },
+                        onDelete = {
+                            deletingIndices.value = deletingIndices.value + index
+                            viewModel.requestDelete(index)
+                        }
+                    )
+                }
                 Spacer(Modifier.height(12.dp))
             }
 
@@ -178,13 +209,15 @@ fun ConfirmScreen(
                             if (totalExpense > 0) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text("总支出", style = MaterialTheme.typography.bodyMedium, color = WarmTextSecondary)
-                                    Text(
-                                        "¥ ${formatAmount(totalExpense)}",
-                                        style = MaterialTheme.typography.titleMedium,
+                                    AnimatedAmountText(
+                                        amount = totalExpense,
+                                        prefix = "¥ ",
                                         color = WarmExpense,
+                                        style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 }
@@ -193,13 +226,15 @@ fun ConfirmScreen(
                                 Spacer(Modifier.height(8.dp))
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text("总收入", style = MaterialTheme.typography.bodyMedium, color = WarmTextSecondary)
-                                    Text(
-                                        "¥ ${formatAmount(totalIncome)}",
-                                        style = MaterialTheme.typography.titleMedium,
+                                    AnimatedAmountText(
+                                        amount = totalIncome,
+                                        prefix = "¥ ",
                                         color = WarmIncome,
+                                        style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 }
@@ -227,18 +262,34 @@ fun ConfirmScreen(
                         disabledContainerColor = WarmSecondary.copy(alpha = 0.5f)
                     )
                 ) {
-                    if (uiState.isSaving) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = WarmOnPrimary,
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Text("保存中...", style = MaterialTheme.typography.labelLarge)
-                    } else {
-                        Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(22.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("确认保存全部", style = MaterialTheme.typography.labelLarge)
+                    AnimatedContent(
+                        targetState = uiState.isSaving,
+                        transitionSpec = { Crossfade(tween(300)).using { it } },
+                        label = "saveBtn"
+                    ) { saving ->
+                        if (saving) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = WarmOnPrimary,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text("保存中...", style = MaterialTheme.typography.labelLarge)
+                            }
+                        } else {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(22.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("确认保存全部", style = MaterialTheme.typography.labelLarge)
+                            }
+                        }
                     }
                 }
                 Spacer(Modifier.height(32.dp))
@@ -253,6 +304,7 @@ private fun TransactionEditCard(
     index: Int,
     draft: TransactionDraft,
     error: String?,
+    totalTransactions: Int,
     onUpdateAmount: (String) -> Unit,
     onUpdateCategory: (String) -> Unit,
     onUpdateNote: (String) -> Unit,
@@ -297,7 +349,6 @@ private fun TransactionEditCard(
                         val date = java.time.Instant.ofEpochMilli(millis)
                             .atZone(java.time.ZoneId.systemDefault())
                             .toLocalDate()
-                        // Preserve the original time if available, otherwise use noon
                         val originalTime = parseTimeFromIso(draft.occurredAt)
                         val newDateTime = "${date}T${originalTime}+08:00"
                         onUpdateOccurredAt(newDateTime)
@@ -368,12 +419,10 @@ private fun TransactionEditCard(
 
                 Spacer(Modifier.width(8.dp))
 
-                // Confidence badge
                 ConfidenceBadge(confidence = draft.confidence)
 
                 Spacer(Modifier.weight(1f))
 
-                // Delete button
                 IconButton(
                     onClick = onDelete,
                     modifier = Modifier.size(32.dp)
@@ -389,7 +438,8 @@ private fun TransactionEditCard(
 
             Spacer(Modifier.height(12.dp))
 
-            // Amount field
+            // Amount field with animated content
+            val displayAmount = draft.amount ?: 0.0
             OutlinedTextField(
                 value = draft.amountText,
                 onValueChange = onUpdateAmount,
@@ -406,12 +456,20 @@ private fun TransactionEditCard(
                     )
                 },
                 prefix = {
-                    Text(
-                        "¥ ",
-                        style = MaterialTheme.typography.displayMedium,
-                        color = if (draft.type == TransactionType.INCOME) WarmIncome else WarmExpense,
-                        fontWeight = FontWeight.Bold
-                    )
+                    AnimatedContent(
+                        targetState = displayAmount,
+                        transitionSpec = {
+                            Crossfade(tween(300)).using { it }
+                        },
+                        label = "amountPrefix"
+                    ) { _ ->
+                        Text(
+                            "¥ ",
+                            style = MaterialTheme.typography.displayMedium,
+                            color = if (draft.type == TransactionType.INCOME) WarmIncome else WarmExpense,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -542,7 +600,6 @@ private fun TransactionEditCard(
                 textStyle = MaterialTheme.typography.bodyMedium
             )
 
-            // Merchant/item if available
             if (draft.merchantOrItem.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -581,7 +638,6 @@ private fun ConfidenceBadge(confidence: Double) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
-            fontSize = MaterialTheme.typography.labelSmall.fontSize,
             color = color
         )
     }
@@ -624,13 +680,5 @@ private fun parseTimeFromIso(iso: String): String {
         dt.format(DateTimeFormatter.ofPattern("HH:mm"))
     } catch (e: Exception) {
         "12:00"
-    }
-}
-
-private fun formatAmount(amount: Double): String {
-    return if (amount == amount.toLong().toDouble()) {
-        amount.toLong().toString()
-    } else {
-        String.format("%.1f", amount)
     }
 }

@@ -3,6 +3,7 @@
 build/
 */build/
 !gradle/wrapper/gradle-wrapper.jar
+gradle-8.5/
 
 # Local configuration
 local.properties

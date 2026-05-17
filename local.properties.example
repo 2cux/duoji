@@ -1,0 +1,17 @@
+# Android SDK location
+# This file is used by Android Studio and Gradle to find the Android SDK.
+#
+# Android Studio usually generates this file automatically when you open
+# the project. If you need to create it manually, copy this file to
+# local.properties and set the SDK path for your OS:
+#
+# macOS:
+#   sdk.dir=/Users/<username>/Library/Android/sdk
+#
+# Linux:
+#   sdk.dir=/home/<username>/Android/Sdk
+#
+# Windows:
+#   sdk.dir=C:\\Users\\<username>\\AppData\\Local\\Android\\Sdk
+#
+sdk.dir=/path/to/your/android/sdk

@@ -36,24 +36,94 @@
 - Phase 2: Room 本地账本闭环、账单列表、账单编辑、首页真实数据刷新
 - Phase 3: 月度统计面板、分类/趋势/高频分析、AI 月度建议（离线可用）
 
-## 如何运行
+## 如何看到项目成果
 
-1. 克隆项目:
+多记是原生 Android App（Kotlin + Jetpack Compose），**不能**像网页一样直接在浏览器预览。需要通过 Android Studio 或直接安装 APK 才能运行。
+
+### 方式一：Android Studio 运行
+
+前置条件：
+- 安装 [Android Studio](https://developer.android.com/studio)（2023.1 或更高版本）
+- Android Studio 内安装 Android SDK Platform 34（通过 SDK Manager）
+- JDK 17+（Android Studio 自带）
+
+步骤：
+1. **打开 Android Studio**
+2. **File → Open**，选择项目根目录 `duoji/`（包含 `settings.gradle.kts` 的目录，不是 `app/` 子目录）
+3. 等待 **Gradle Sync** 完成
+4. 创建 Android 模拟器（Target API 26+），或连接 Android 真机
+5. 点击 **Run ▶**（或 `Shift + F10`）
+6. App 启动后默认进入首页
+
+### 方式二：连接 Android 真机
+
+1. 手机开启**开发者模式**：设置 → 关于手机 → 连续点击"版本号"7 次
+2. 开启 **USB 调试**
+3. 用 USB 线连接电脑
+4. Android Studio 选择该设备
+5. 点击 Run
+
+### 方式三：安装 Debug APK
+
+1. 在项目根目录执行：
    ```bash
-   git clone <repo-url>
-   cd duoji
+   # macOS / Linux
+   ./gradlew :app:assembleDebug
+
+   # Windows
+   gradlew.bat :app:assembleDebug
+   ```
+2. 构建成功后 APK 位于：
+   ```
+   app/build/outputs/apk/debug/app-debug.apk
+   ```
+3. 安装到设备：
+   ```bash
+   # 通过 adb 安装（需要连接设备）
+   adb install -r app/build/outputs/apk/debug/app-debug.apk
+
+   # 或者把 APK 传到手机，点击文件安装
    ```
 
-2. 用 Android Studio (2023.1+) 打开项目根目录。
+### Debug APK 路径
 
-3. 等待 Gradle 同步完成。
+```
+app/build/outputs/apk/debug/app-debug.apk
+```
 
-4. 连接设备或启动模拟器 (API 26+)。
+### 关于 local.properties
 
-5. 点击 Run 或使用命令行:
-   ```bash
-   ./gradlew :app:installDebug
-   ```
+`local.properties` 用于告诉 Gradle Android SDK 的安装位置。
+
+- **不需要手动提交** — 该文件已在 `.gitignore` 中，不会被 Git 跟踪
+- **Android Studio 通常会自动生成** — 打开项目后会自动填写正确的 SDK 路径
+- 如果命令行构建失败，提示 "SDK location not found"：
+  1. 复制 `local.properties.example` 为 `local.properties`
+  2. 将 `sdk.dir` 改为本机 Android SDK 实际路径
+  3. 重新执行构建命令
+
+### 常见问题排查
+
+| 问题 | 解决方法 |
+|------|----------|
+| Android Studio 打开后找不到模块 | 确保打开的是项目**根目录**（含 `settings.gradle.kts`），不是 `app/` 子目录 |
+| Gradle Sync 失败 | 检查网络连接，确保已安装 Android SDK Platform 34 |
+| JDK 版本不匹配 | AGP 8.2.x 需要 JDK 17+，Android Studio 自带 JDK |
+| SDK 未找到 | 复制 `local.properties.example` 为 `local.properties`，填入本机 SDK 路径；或设置 `ANDROID_HOME` 环境变量 |
+| Compose 编译错误 | 检查 Kotlin 和 Compose Compiler 版本是否匹配（当前使用 Kotlin 1.9.22 + Compose Compiler 1.5.10） |
+| Room KSP 错误 | KSP 版本必须与 Kotlin 版本一致（当前 1.9.22-1.0.17） |
+| 模拟器未创建 | 在 Android Studio 的 Device Manager 中创建模拟器（API 26+） |
+| 真机无法识别 | 确认 USB 调试已开启，尝试更换 USB 线或端口 |
+| FileProvider 冲突 | `AndroidManifest.xml` 中 FileProvider authority 使用了 `${applicationId}`，会自动匹配 |
+
+### 开发环境说明
+
+当前 CI/开发环境 **没有安装 Android SDK**，因此在命令行中无法直接完成编译。
+
+要在本地开发机运行此项目：
+1. 安装 Android Studio
+2. Android Studio 会自动下载所需的 Android SDK 和构建工具
+3. 按照上方的"方式一"步骤操作即可
 
 ## AI 配置说明
 

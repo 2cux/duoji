@@ -1,5 +1,7 @@
 package com.duoji.app.ui.bill
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,7 +21,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.duoji.app.data.local.entity.TransactionEntity
-import com.duoji.app.data.repository.TransactionRepository
+import com.duoji.app.ui.components.animation.AnimatedAmountText
+import com.duoji.app.ui.components.animation.AnimatedSection
+import com.duoji.app.ui.components.animation.StaggeredListItem
 import com.duoji.app.ui.theme.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -126,33 +130,55 @@ fun BillListScreen(
                 Spacer(Modifier.height(12.dp))
             }
 
-            if (uiState.isLoading) {
-                item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = WarmPrimary)
+            // Animated content keyed by month
+            item(key = "content_${uiState.selectedYear}_${uiState.selectedMonth}") {
+                AnimatedContent(
+                    targetState = Pair(uiState.selectedYear, uiState.selectedMonth),
+                    transitionSpec = {
+                        val direction = if (targetState.second > initialState.second) 1 else -1
+                        (slideInHorizontally(
+                            animationSpec = tween(350),
+                            initialOffsetX = { fullWidth -> direction * fullWidth / 4 }
+                        ) + fadeIn(animationSpec = tween(350)))
+                            .togetherWith(
+                                slideOutHorizontally(
+                                    animationSpec = tween(250),
+                                    targetOffsetX = { fullWidth -> -direction * fullWidth / 4 }
+                                ) + fadeOut(animationSpec = tween(250))
+                            )
+                    },
+                    label = "monthContent"
+                ) { _ ->
+                    Column {
+                        if (uiState.isLoading) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = WarmPrimary)
+                            }
+                        } else if (uiState.isEmpty) {
+                            EmptyBillState(
+                                onAiRecord = onNavigateToRecord,
+                                onManualRecord = onNavigateToManualRecord
+                            )
+                        } else {
+                            MonthSummaryCard(
+                                expense = uiState.monthExpense,
+                                income = uiState.monthIncome,
+                                balance = uiState.monthBalance
+                            )
+                            Spacer(Modifier.height(16.dp))
+                        }
                     }
                 }
-            } else if (uiState.isEmpty) {
-                item {
-                    EmptyBillState(
-                        onAiRecord = onNavigateToRecord,
-                        onManualRecord = onNavigateToManualRecord
-                    )
-                }
-            } else {
-                item {
-                    MonthSummaryCard(
-                        expense = uiState.monthExpense,
-                        income = uiState.monthIncome,
-                        balance = uiState.monthBalance
-                    )
-                    Spacer(Modifier.height(16.dp))
-                }
+            }
 
-                items(uiState.groupedTransactions) { group ->
+            if (!uiState.isLoading && !uiState.isEmpty) {
+                items(
+                    items = uiState.groupedTransactions,
+                    key = { it.date.toEpochDay() }
+                ) { group ->
                     DateGroup(
                         group = group,
                         onItemClick = onNavigateToEdit,
@@ -193,11 +219,19 @@ private fun MonthSelector(
             )
         }
         Spacer(Modifier.width(12.dp))
-        Text(
-            text = "${year}年${month}月",
-            style = MaterialTheme.typography.titleLarge,
-            color = WarmTextPrimary
-        )
+        AnimatedContent(
+            targetState = Pair(year, month),
+            transitionSpec = {
+                Crossfade(tween(300)).using { it }
+            },
+            label = "monthLabel"
+        ) { (y, m) ->
+            Text(
+                text = "${y}年${m}月",
+                style = MaterialTheme.typography.titleLarge,
+                color = WarmTextPrimary
+            )
+        }
         Spacer(Modifier.width(12.dp))
         IconButton(
             onClick = onNext,
@@ -244,10 +278,11 @@ private fun SummaryItem(label: String, amount: Double, color: androidx.compose.u
             color = WarmTextSecondary
         )
         Spacer(Modifier.height(4.dp))
-        Text(
-            text = "¥${formatAmount(amount)}",
-            style = MaterialTheme.typography.titleMedium,
+        AnimatedAmountText(
+            amount = amount,
+            prefix = "¥",
             color = color,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
     }
@@ -304,11 +339,17 @@ private fun DateGroup(
         ) {
             Column {
                 group.transactions.forEachIndexed { index, tx ->
-                    TransactionItem(
-                        transaction = tx,
-                        onClick = { onItemClick(tx.id) },
-                        onDelete = { onDeleteRequest(tx.id) }
-                    )
+                    StaggeredListItem(
+                        index = index,
+                        delayPerItem = 40,
+                        animDuration = 300
+                    ) {
+                        TransactionItem(
+                            transaction = tx,
+                            onClick = { onItemClick(tx.id) },
+                            onDelete = { onDeleteRequest(tx.id) }
+                        )
+                    }
                     if (index < group.transactions.lastIndex) {
                         Box(
                             modifier = Modifier
@@ -337,7 +378,6 @@ private fun TransactionItem(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Colored dot and category
         Box(
             modifier = Modifier
                 .size(36.dp)
@@ -409,36 +449,42 @@ private fun EmptyBillState(onAiRecord: () -> Unit, onManualRecord: () -> Unit) {
                 modifier = Modifier.size(64.dp)
             )
             Spacer(Modifier.height(16.dp))
-            Text(
-                text = "这个月还没有记录，去记一笔吧",
-                style = MaterialTheme.typography.bodyMedium,
-                color = WarmTextSecondary
-            )
+            AnimatedSection(delayMillis = 100) {
+                Text(
+                    text = "这个月还没有记录，去记一笔吧",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = WarmTextSecondary
+                )
+            }
             Spacer(Modifier.height(6.dp))
-            Text(
-                text = "试试输入：午饭35，咖啡18，地铁6",
-                style = MaterialTheme.typography.bodySmall,
-                color = WarmTextSecondary.copy(alpha = 0.6f)
-            )
+            AnimatedSection(delayMillis = 150) {
+                Text(
+                    text = "试试输入：午饭35，咖啡18，地铁6",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = WarmTextSecondary.copy(alpha = 0.6f)
+                )
+            }
             Spacer(Modifier.height(20.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(
-                    onClick = onAiRecord,
-                    shape = RoundedCornerShape(18.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = WarmPrimary)
-                ) {
-                    Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("AI 记一笔")
-                }
-                Button(
-                    onClick = onManualRecord,
-                    shape = RoundedCornerShape(18.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary)
-                ) {
-                    Icon(Icons.Rounded.EditNote, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("手动记一笔")
+            AnimatedSection(delayMillis = 200) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(
+                        onClick = onAiRecord,
+                        shape = RoundedCornerShape(18.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = WarmPrimary)
+                    ) {
+                        Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("AI 记一笔")
+                    }
+                    Button(
+                        onClick = onManualRecord,
+                        shape = RoundedCornerShape(18.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary)
+                    ) {
+                        Icon(Icons.Rounded.EditNote, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("手动记一笔")
+                    }
                 }
             }
         }

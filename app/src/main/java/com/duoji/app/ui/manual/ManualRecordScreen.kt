@@ -1,5 +1,7 @@
 package com.duoji.app.ui.manual
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,9 +22,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.duoji.app.ui.components.animation.AnimatedSection
 import com.duoji.app.ui.theme.*
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -61,7 +63,6 @@ fun ManualRecordScreen(
         }
     }
 
-    // Date picker dialog
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = uiState.occurredAt
@@ -134,244 +135,270 @@ fun ManualRecordScreen(
         ) {
             Spacer(Modifier.height(8.dp))
 
-            // Type selector
-            Text(
-                text = "类型",
-                style = MaterialTheme.typography.bodySmall,
-                color = WarmTextSecondary
-            )
-            Spacer(Modifier.height(4.dp))
+            // Type
+            AnimatedSection(delayMillis = 0, animDuration = 350) {
+                Column {
+                    Text(
+                        text = "类型",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = WarmTextSecondary
+                    )
+                    Spacer(Modifier.height(4.dp))
 
-            ExposedDropdownMenuBox(
-                expanded = showTypeDropdown,
-                onExpandedChange = { showTypeDropdown = it }
-            ) {
-                OutlinedTextField(
-                    value = typeOptions.first { it.first == uiState.type }.second,
-                    onValueChange = {},
-                    readOnly = true,
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    singleLine = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTypeDropdown) },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = WarmPrimary,
-                        unfocusedBorderColor = WarmSecondary.copy(alpha = 0.4f),
-                        focusedContainerColor = WarmCardAlt,
-                        unfocusedContainerColor = WarmCardAlt
-                    ),
-                    textStyle = MaterialTheme.typography.bodyMedium
-                )
-                ExposedDropdownMenu(
-                    expanded = showTypeDropdown,
-                    onDismissRequest = { showTypeDropdown = false },
-                    containerColor = WarmCard
-                ) {
-                    typeOptions.forEach { (value, label) ->
-                        DropdownMenuItem(
-                            text = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .clip(RoundedCornerShape(4.dp))
-                                            .background(typeColors[value]!!)
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(label, style = MaterialTheme.typography.bodyMedium)
-                                }
-                            },
-                            onClick = {
-                                viewModel.updateType(value)
-                                showTypeDropdown = false
-                            }
+                    ExposedDropdownMenuBox(
+                        expanded = showTypeDropdown,
+                        onExpandedChange = { showTypeDropdown = it }
+                    ) {
+                        OutlinedTextField(
+                            value = typeOptions.first { it.first == uiState.type }.second,
+                            onValueChange = {},
+                            readOnly = true,
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            singleLine = true,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTypeDropdown) },
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = WarmPrimary,
+                                unfocusedBorderColor = WarmSecondary.copy(alpha = 0.4f),
+                                focusedContainerColor = WarmCardAlt,
+                                unfocusedContainerColor = WarmCardAlt
+                            ),
+                            textStyle = MaterialTheme.typography.bodyMedium
                         )
+                        ExposedDropdownMenu(
+                            expanded = showTypeDropdown,
+                            onDismissRequest = { showTypeDropdown = false },
+                            containerColor = WarmCard
+                        ) {
+                            typeOptions.forEach { (value, label) ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .clip(RoundedCornerShape(4.dp))
+                                                    .background(typeColors[value]!!)
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(label, style = MaterialTheme.typography.bodyMedium)
+                                        }
+                                    },
+                                    onClick = {
+                                        viewModel.updateType(value)
+                                        showTypeDropdown = false
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
-
             Spacer(Modifier.height(16.dp))
 
             // Amount
-            Text(
-                text = "金额 *",
-                style = MaterialTheme.typography.bodySmall,
-                color = WarmTextSecondary
-            )
-            Spacer(Modifier.height(4.dp))
-            OutlinedTextField(
-                value = uiState.amountText,
-                onValueChange = { viewModel.updateAmount(it) },
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = MaterialTheme.typography.displaySmall.copy(
-                    color = typeColors[uiState.type] ?: WarmExpense,
-                    fontWeight = FontWeight.Bold
-                ),
-                placeholder = {
-                    Text("0", style = MaterialTheme.typography.displaySmall, color = WarmTextSecondary.copy(alpha = 0.3f))
-                },
-                prefix = {
+            AnimatedSection(delayMillis = 40, animDuration = 350) {
+                Column {
                     Text(
-                        "¥ ",
-                        style = MaterialTheme.typography.displaySmall,
-                        color = typeColors[uiState.type] ?: WarmExpense,
-                        fontWeight = FontWeight.Bold
+                        text = "金额 *",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = WarmTextSecondary
                     )
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = WarmPrimary,
-                    unfocusedBorderColor = WarmSecondary.copy(alpha = 0.4f),
-                    focusedContainerColor = WarmCardAlt,
-                    unfocusedContainerColor = WarmCardAlt,
-                    cursorColor = WarmPrimary
-                )
-            )
-
+                    Spacer(Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = uiState.amountText,
+                        onValueChange = { viewModel.updateAmount(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = MaterialTheme.typography.displaySmall.copy(
+                            color = typeColors[uiState.type] ?: WarmExpense,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        placeholder = {
+                            Text("0", style = MaterialTheme.typography.displaySmall, color = WarmTextSecondary.copy(alpha = 0.3f))
+                        },
+                        prefix = {
+                            Text(
+                                "¥ ",
+                                style = MaterialTheme.typography.displaySmall,
+                                color = typeColors[uiState.type] ?: WarmExpense,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = WarmPrimary,
+                            unfocusedBorderColor = WarmSecondary.copy(alpha = 0.4f),
+                            focusedContainerColor = WarmCardAlt,
+                            unfocusedContainerColor = WarmCardAlt,
+                            cursorColor = WarmPrimary
+                        )
+                    )
+                }
+            }
             Spacer(Modifier.height(16.dp))
 
             // Category
-            Text(
-                text = "分类",
-                style = MaterialTheme.typography.bodySmall,
-                color = WarmTextSecondary
-            )
-            Spacer(Modifier.height(4.dp))
-
-            ExposedDropdownMenuBox(
-                expanded = showCategoryDropdown,
-                onExpandedChange = { showCategoryDropdown = it }
-            ) {
-                OutlinedTextField(
-                    value = uiState.category,
-                    onValueChange = {},
-                    readOnly = true,
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    singleLine = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showCategoryDropdown) },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = WarmPrimary,
-                        unfocusedBorderColor = WarmSecondary.copy(alpha = 0.4f),
-                        focusedContainerColor = WarmCardAlt,
-                        unfocusedContainerColor = WarmCardAlt
-                    ),
-                    textStyle = MaterialTheme.typography.bodyMedium
-                )
-                ExposedDropdownMenu(
-                    expanded = showCategoryDropdown,
-                    onDismissRequest = { showCategoryDropdown = false },
-                    containerColor = WarmCard
-                ) {
-                    viewModel.getCategoriesForCurrentType().forEach { category ->
-                        DropdownMenuItem(
-                            text = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .clip(RoundedCornerShape(4.dp))
-                                            .background(categoryColor(category))
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(category, style = MaterialTheme.typography.bodyMedium)
-                                }
-                            },
-                            onClick = {
-                                viewModel.updateCategory(category)
-                                showCategoryDropdown = false
+            AnimatedSection(delayMillis = 80, animDuration = 350) {
+                Column {
+                    Text(
+                        text = "分类",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = WarmTextSecondary
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    ExposedDropdownMenuBox(
+                        expanded = showCategoryDropdown,
+                        onExpandedChange = { showCategoryDropdown = it }
+                    ) {
+                        OutlinedTextField(
+                            value = uiState.category,
+                            onValueChange = {},
+                            readOnly = true,
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            singleLine = true,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showCategoryDropdown) },
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = WarmPrimary,
+                                unfocusedBorderColor = WarmSecondary.copy(alpha = 0.4f),
+                                focusedContainerColor = WarmCardAlt,
+                                unfocusedContainerColor = WarmCardAlt
+                            ),
+                            textStyle = MaterialTheme.typography.bodyMedium
+                        )
+                        ExposedDropdownMenu(
+                            expanded = showCategoryDropdown,
+                            onDismissRequest = { showCategoryDropdown = false },
+                            containerColor = WarmCard
+                        ) {
+                            viewModel.getCategoriesForCurrentType().forEach { category ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .clip(RoundedCornerShape(4.dp))
+                                                    .background(categoryColor(category))
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(category, style = MaterialTheme.typography.bodyMedium)
+                                        }
+                                    },
+                                    onClick = {
+                                        viewModel.updateCategory(category)
+                                        showCategoryDropdown = false
+                                    }
+                                )
                             }
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+
+            // Date
+            AnimatedSection(delayMillis = 120, animDuration = 350) {
+                Column {
+                    Text(
+                        text = "时间",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = WarmTextSecondary
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(WarmCardAlt)
+                            .clickable { showDatePicker = true }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = WarmTextSecondary, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = uiState.occurredAt.format(DateTimeFormatter.ofPattern("M月d日 EEEE", java.util.Locale.CHINESE)),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = WarmTextPrimary
                         )
                     }
                 }
             }
-
-            Spacer(Modifier.height(16.dp))
-
-            // Date
-            Text(
-                text = "时间",
-                style = MaterialTheme.typography.bodySmall,
-                color = WarmTextSecondary
-            )
-            Spacer(Modifier.height(4.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(WarmCardAlt)
-                    .clickable { showDatePicker = true }
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = WarmTextSecondary, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = uiState.occurredAt.format(DateTimeFormatter.ofPattern("M月d日 EEEE", java.util.Locale.CHINESE)),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = WarmTextPrimary
-                )
-            }
-
             Spacer(Modifier.height(16.dp))
 
             // Note
-            Text(
-                text = "备注",
-                style = MaterialTheme.typography.bodySmall,
-                color = WarmTextSecondary
-            )
-            Spacer(Modifier.height(4.dp))
-            OutlinedTextField(
-                value = uiState.note,
-                onValueChange = { viewModel.updateNote(it) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                placeholder = { Text("可选", style = MaterialTheme.typography.bodyMedium, color = WarmTextSecondary.copy(alpha = 0.4f)) },
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = WarmPrimary,
-                    unfocusedBorderColor = WarmSecondary.copy(alpha = 0.4f),
-                    focusedContainerColor = WarmCardAlt,
-                    unfocusedContainerColor = WarmCardAlt,
-                    cursorColor = WarmPrimary
-                ),
-                textStyle = MaterialTheme.typography.bodyMedium
-            )
-
+            AnimatedSection(delayMillis = 160, animDuration = 350) {
+                Column {
+                    Text(
+                        text = "备注",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = WarmTextSecondary
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = uiState.note,
+                        onValueChange = { viewModel.updateNote(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text("可选", style = MaterialTheme.typography.bodyMedium, color = WarmTextSecondary.copy(alpha = 0.4f)) },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = WarmPrimary,
+                            unfocusedBorderColor = WarmSecondary.copy(alpha = 0.4f),
+                            focusedContainerColor = WarmCardAlt,
+                            unfocusedContainerColor = WarmCardAlt,
+                            cursorColor = WarmPrimary
+                        ),
+                        textStyle = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
             Spacer(Modifier.height(16.dp))
 
-            // Merchant or item
-            Text(
-                text = "商户或消费对象",
-                style = MaterialTheme.typography.bodySmall,
-                color = WarmTextSecondary
-            )
-            Spacer(Modifier.height(4.dp))
-            OutlinedTextField(
-                value = uiState.merchantOrItem,
-                onValueChange = { viewModel.updateMerchantOrItem(it) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                placeholder = { Text("可选", style = MaterialTheme.typography.bodyMedium, color = WarmTextSecondary.copy(alpha = 0.4f)) },
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = WarmPrimary,
-                    unfocusedBorderColor = WarmSecondary.copy(alpha = 0.4f),
-                    focusedContainerColor = WarmCardAlt,
-                    unfocusedContainerColor = WarmCardAlt,
-                    cursorColor = WarmPrimary
-                ),
-                textStyle = MaterialTheme.typography.bodyMedium
-            )
+            // Merchant
+            AnimatedSection(delayMillis = 200, animDuration = 350) {
+                Column {
+                    Text(
+                        text = "商户或消费对象",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = WarmTextSecondary
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = uiState.merchantOrItem,
+                        onValueChange = { viewModel.updateMerchantOrItem(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text("可选", style = MaterialTheme.typography.bodyMedium, color = WarmTextSecondary.copy(alpha = 0.4f)) },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = WarmPrimary,
+                            unfocusedBorderColor = WarmSecondary.copy(alpha = 0.4f),
+                            focusedContainerColor = WarmCardAlt,
+                            unfocusedContainerColor = WarmCardAlt,
+                            cursorColor = WarmPrimary
+                        ),
+                        textStyle = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+            Spacer(Modifier.height(24.dp))
 
             // Error message
-            if (uiState.errorMessage != null) {
-                Spacer(Modifier.height(12.dp))
+            AnimatedVisibility(
+                visible = uiState.errorMessage != null,
+                enter = fadeIn(animationSpec = tween(300)) +
+                        slideInVertically(animationSpec = tween(300)) { -it / 4 },
+                exit = fadeOut(animationSpec = tween(200)) +
+                        shrinkVertically(animationSpec = tween(200))
+            ) {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
                     shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(containerColor = WarningLight),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -396,8 +423,6 @@ fun ManualRecordScreen(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-
             // Save button
             Button(
                 onClick = { viewModel.save() },
@@ -409,18 +434,34 @@ fun ManualRecordScreen(
                     disabledContainerColor = WarmSecondary.copy(alpha = 0.5f)
                 )
             ) {
-                if (uiState.isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = WarmOnPrimary,
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text("保存中...", style = MaterialTheme.typography.labelLarge)
-                } else {
-                    Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(22.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("保存", style = MaterialTheme.typography.labelLarge)
+                AnimatedContent(
+                    targetState = uiState.isSaving,
+                    transitionSpec = { Crossfade(tween(300)).using { it } },
+                    label = "saveBtn"
+                ) { saving ->
+                    if (saving) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = WarmOnPrimary,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text("保存中...", style = MaterialTheme.typography.labelLarge)
+                        }
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(22.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("保存", style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
                 }
             }
 

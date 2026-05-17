@@ -1,5 +1,8 @@
 package com.duoji.app.ui.statistics
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,6 +27,9 @@ import com.duoji.app.domain.statistics.DailySummary
 import com.duoji.app.domain.statistics.FrequentSmallExpense
 import com.duoji.app.domain.statistics.MonthlyAdviceState
 import com.duoji.app.domain.statistics.MonthlyStatistics
+import com.duoji.app.ui.components.animation.AnimatedAmountText
+import com.duoji.app.ui.components.animation.AnimatedProgressBar
+import com.duoji.app.ui.components.animation.AnimatedSection
 import com.duoji.app.ui.theme.*
 import java.time.LocalDate
 
@@ -66,12 +72,14 @@ fun StatisticsScreen(
             Spacer(Modifier.height(8.dp))
 
             // Month selector
-            MonthSelector(
-                year = uiState.selectedYear,
-                month = uiState.selectedMonth,
-                onPrevious = { viewModel.previousMonth() },
-                onNext = { viewModel.nextMonth() }
-            )
+            AnimatedSection(delayMillis = 0, animDuration = 350) {
+                MonthSelector(
+                    year = uiState.selectedYear,
+                    month = uiState.selectedMonth,
+                    onPrevious = { viewModel.previousMonth() },
+                    onNext = { viewModel.nextMonth() }
+                )
+            }
 
             Spacer(Modifier.height(16.dp))
 
@@ -86,74 +94,87 @@ fun StatisticsScreen(
                 val stats = uiState.statistics
 
                 if (stats == null || stats.transactionCount == 0) {
-                    // Empty state
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Rounded.Assessment,
-                                contentDescription = null,
-                                tint = WarmTextSecondary.copy(alpha = 0.4f),
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Spacer(Modifier.height(16.dp))
-                            Text(
-                                text = "这个月还没有足够的记录。",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = WarmTextSecondary
-                            )
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                text = "先记几笔，月底我再帮你看看钱主要花在哪里。",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = WarmTextSecondary.copy(alpha = 0.6f)
-                            )
-                            Spacer(Modifier.height(20.dp))
-                            Button(
-                                onClick = onNavigateToRecord,
-                                shape = RoundedCornerShape(18.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary)
-                            ) {
-                                Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text("去记一笔")
+                    AnimatedSection(delayMillis = 80, animDuration = 400) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    Icons.Rounded.Assessment,
+                                    contentDescription = null,
+                                    tint = WarmTextSecondary.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(64.dp)
+                                )
+                                Spacer(Modifier.height(16.dp))
+                                Text(
+                                    text = "这个月还没有足够的记录。",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = WarmTextSecondary
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    text = "先记几笔，月底我再帮你看看钱主要花在哪里。",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = WarmTextSecondary.copy(alpha = 0.6f)
+                                )
+                                Spacer(Modifier.height(20.dp))
+                                Button(
+                                    onClick = onNavigateToRecord,
+                                    shape = RoundedCornerShape(18.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary)
+                                ) {
+                                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("去记一笔")
+                                }
                             }
                         }
                     }
                 } else {
                     // Monthly overview card
-                    MonthlyOverviewCard(stats)
+                    AnimatedSection(delayMillis = 80, animDuration = 400) {
+                        MonthlyOverviewCard(stats)
+                    }
 
                     Spacer(Modifier.height(16.dp))
 
                     // Category breakdown card
-                    CategoryBreakdownCard(stats)
+                    AnimatedSection(delayMillis = 140, animDuration = 400) {
+                        CategoryBreakdownCard(stats)
+                    }
 
                     Spacer(Modifier.height(16.dp))
 
                     // Daily trend card
-                    DailyTrendCard(stats)
+                    AnimatedSection(delayMillis = 200, animDuration = 400) {
+                        DailyTrendCard(stats)
+                    }
 
                     Spacer(Modifier.height(16.dp))
 
                     // Top expense card
-                    TopExpenseCard(stats)
+                    AnimatedSection(delayMillis = 260, animDuration = 400) {
+                        TopExpenseCard(stats)
+                    }
 
                     Spacer(Modifier.height(16.dp))
 
                     // Frequent small expenses card
-                    FrequentSmallExpensesCard(stats)
+                    AnimatedSection(delayMillis = 320, animDuration = 400) {
+                        FrequentSmallExpensesCard(stats)
+                    }
 
                     Spacer(Modifier.height(16.dp))
 
                     // AI monthly advice card
-                    AiMonthlyAdviceCard(
-                        adviceState = uiState.adviceState,
-                        onGenerate = { viewModel.generateMonthlyAdvice() },
-                        onClearError = { viewModel.clearAdviceError() }
-                    )
+                    AnimatedSection(delayMillis = 380, animDuration = 400) {
+                        AiMonthlyAdviceCard(
+                            adviceState = uiState.adviceState,
+                            onGenerate = { viewModel.generateMonthlyAdvice() },
+                            onClearError = { viewModel.clearAdviceError() }
+                        )
+                    }
 
                     Spacer(Modifier.height(32.dp))
                 }
@@ -185,11 +206,17 @@ private fun MonthSelector(
             )
         }
         Spacer(Modifier.width(12.dp))
-        Text(
-            text = "${year}年${month}月",
-            style = MaterialTheme.typography.titleLarge,
-            color = WarmTextPrimary
-        )
+        AnimatedContent(
+            targetState = Pair(year, month),
+            transitionSpec = { Crossfade(tween(300)).using { it } },
+            label = "monthLabel"
+        ) { (y, m) ->
+            Text(
+                text = "${y}年${m}月",
+                style = MaterialTheme.typography.titleLarge,
+                color = WarmTextPrimary
+            )
+        }
         Spacer(Modifier.width(12.dp))
         IconButton(
             onClick = onNext,
@@ -232,23 +259,23 @@ private fun MonthlyOverviewCard(stats: MonthlyStatistics?) {
                 return@Column
             }
 
-            // Expense - prominent
             Text(
                 text = "本月已支出",
                 style = MaterialTheme.typography.bodySmall,
                 color = WarmTextSecondary
             )
             Spacer(Modifier.height(4.dp))
-            Text(
-                text = "¥ ${formatAmount(stats!!.totalExpense)}",
-                style = MaterialTheme.typography.displayLarge,
+            AnimatedAmountText(
+                amount = stats!!.totalExpense,
+                prefix = "¥ ",
                 color = WarmExpense,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.displayLarge,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Start
             )
 
             Spacer(Modifier.height(16.dp))
 
-            // Income and balance row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
@@ -260,10 +287,11 @@ private fun MonthlyOverviewCard(stats: MonthlyStatistics?) {
                         color = WarmTextSecondary
                     )
                     Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = "¥ ${formatAmount(stats.totalIncome)}",
-                        style = MaterialTheme.typography.titleMedium,
+                    AnimatedAmountText(
+                        amount = stats.totalIncome,
+                        prefix = "¥ ",
                         color = WarmIncome,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -274,10 +302,11 @@ private fun MonthlyOverviewCard(stats: MonthlyStatistics?) {
                         color = WarmTextSecondary
                     )
                     Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = "¥ ${formatAmount(stats.balance)}",
-                        style = MaterialTheme.typography.titleMedium,
+                    AnimatedAmountText(
+                        amount = stats.balance,
+                        prefix = "¥ ",
                         color = if (stats.balance >= 0) WarmIncome else WarmAccent,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -288,12 +317,18 @@ private fun MonthlyOverviewCard(stats: MonthlyStatistics?) {
                         color = WarmTextSecondary
                     )
                     Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = "${stats.transactionCount}笔",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = WarmTextPrimary,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    AnimatedContent(
+                        targetState = stats.transactionCount,
+                        transitionSpec = { Crossfade(tween(300)).using { it } },
+                        label = "txCount"
+                    ) { count ->
+                        Text(
+                            text = "${count}笔",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = WarmTextPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }
@@ -327,8 +362,12 @@ private fun CategoryBreakdownCard(stats: MonthlyStatistics?) {
                 return@Column
             }
 
-            categories.forEach { cat ->
-                CategoryBar(cat, categories.first().amount)
+            categories.forEachIndexed { index, cat ->
+                CategoryBar(
+                    cat,
+                    categories.first().amount,
+                    delay = index * 80
+                )
                 Spacer(Modifier.height(10.dp))
             }
         }
@@ -336,7 +375,7 @@ private fun CategoryBreakdownCard(stats: MonthlyStatistics?) {
 }
 
 @Composable
-private fun CategoryBar(category: CategorySummary, maxAmount: Double) {
+private fun CategoryBar(category: CategorySummary, maxAmount: Double, delay: Int = 0) {
     val color = categoryColor(category.category)
     val fraction = if (maxAmount > 0) (category.amount / maxAmount).toFloat().coerceIn(0.05f, 1f) else 0f
 
@@ -366,21 +405,13 @@ private fun CategoryBar(category: CategorySummary, maxAmount: Double) {
             )
         }
         Spacer(Modifier.height(6.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(WarmBackground)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(fraction)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(color)
-            )
-        }
+        AnimatedProgressBar(
+            progress = fraction,
+            barColor = color,
+            trackColor = WarmBackground,
+            animDelay = delay,
+            animDuration = 500
+        )
     }
 }
 
@@ -415,8 +446,8 @@ private fun DailyTrendCard(stats: MonthlyStatistics?) {
             val showDays = if (days.size > 14) days.takeLast(14) else days
 
             Column {
-                showDays.forEach { day ->
-                    DailyTrendRow(day, maxExpense)
+                showDays.forEachIndexed { index, day ->
+                    DailyTrendRow(day, maxExpense, delay = index * 20)
                     Spacer(Modifier.height(6.dp))
                 }
             }
@@ -425,7 +456,7 @@ private fun DailyTrendCard(stats: MonthlyStatistics?) {
 }
 
 @Composable
-private fun DailyTrendRow(day: DailySummary, maxExpense: Double) {
+private fun DailyTrendRow(day: DailySummary, maxExpense: Double, delay: Int = 0) {
     val fraction = if (maxExpense > 0) (day.expense / maxExpense).toFloat().coerceIn(0.03f, 1f) else 0f
 
     Row(
@@ -446,10 +477,16 @@ private fun DailyTrendRow(day: DailySummary, maxExpense: Double) {
                 .clip(RoundedCornerShape(4.dp))
                 .background(WarmBackground)
         ) {
+            // Use AnimatedProgressBar directly
+            val animatedFraction by animateFloatAsState(
+                targetValue = fraction,
+                animationSpec = tween(500, delayMillis = delay),
+                label = "dailyBar"
+            )
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .fillMaxWidth(fraction)
+                    .fillMaxWidth(animatedFraction)
                     .clip(RoundedCornerShape(4.dp))
                     .background(WarmPrimary.copy(alpha = 0.7f))
             )
@@ -484,49 +521,57 @@ private fun TopExpenseCard(stats: MonthlyStatistics?) {
 
             val top = stats?.topExpense
             if (top == null) {
-                Text(
-                    text = "还没有明显的大额支出记录。",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = WarmTextSecondary
-                )
+                AnimatedSection(delayMillis = 100) {
+                    Text(
+                        text = "还没有明显的大额支出记录。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = WarmTextSecondary
+                    )
+                }
                 return@Column
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(WarningLight),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = iconForCategory(top.category),
-                        contentDescription = null,
-                        tint = WarmWarning,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "¥${formatAmount(top.amount)}",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = WarmTextPrimary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = buildString {
-                            append(top.category)
-                            if (top.note.isNotBlank()) {
-                                append(" · ${top.note}")
-                            }
-                            append(" · ${TransactionRepository.millisToDateString(top.occurredAt)}")
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = WarmTextSecondary
-                    )
+            AnimatedContent(
+                targetState = top.amount,
+                transitionSpec = { Crossfade(tween(300)).using { it } },
+                label = "topExpense"
+            ) { _ ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(WarningLight),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = iconForCategory(top.category),
+                            contentDescription = null,
+                            tint = WarmWarning,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "¥${formatAmount(top.amount)}",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = WarmTextPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = buildString {
+                                append(top.category)
+                                if (top.note.isNotBlank()) {
+                                    append(" · ${top.note}")
+                                }
+                                append(" · ${TransactionRepository.millisToDateString(top.occurredAt)}")
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = WarmTextSecondary
+                        )
+                    }
                 }
             }
         }
@@ -560,8 +605,10 @@ private fun FrequentSmallExpensesCard(stats: MonthlyStatistics?) {
                 return@Column
             }
 
-            freqExpenses.forEach { fse ->
-                FrequentSmallRow(fse)
+            freqExpenses.forEachIndexed { index, fse ->
+                AnimatedSection(delayMillis = index * 60, animDuration = 350) {
+                    FrequentSmallRow(fse)
+                }
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -617,63 +664,70 @@ private fun AiMonthlyAdviceCard(
             }
             Spacer(Modifier.height(12.dp))
 
-            when {
-                adviceState.isLoading -> {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = WarmPrimary,
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(Modifier.width(12.dp))
+            AnimatedContent(
+                targetState = adviceState,
+                transitionSpec = { Crossfade(tween(300)).using { it } },
+                label = "adviceState",
+                modifier = Modifier.fillMaxWidth()
+            ) { state ->
+                when {
+                    state.isLoading -> {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = WarmPrimary,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = "正在生成建议…",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = WarmTextSecondary
+                            )
+                        }
+                    }
+                    state.content != null -> {
                         Text(
-                            text = "正在生成建议…",
+                            text = state.content,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = WarmTextPrimary,
+                            lineHeight = 22.sp
+                        )
+                    }
+                    state.errorMessage != null -> {
+                        Text(
+                            text = state.errorMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = WarmAccent
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        TextButton(onClick = onClearError) {
+                            Text("知道了", color = WarmPrimary)
+                        }
+                    }
+                    else -> {
+                        Text(
+                            text = "生成后，我会根据本月分类、趋势和小额消费，给你一段具体建议。",
                             style = MaterialTheme.typography.bodyMedium,
                             color = WarmTextSecondary
                         )
-                    }
-                }
-                adviceState.content != null -> {
-                    Text(
-                        text = adviceState.content,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = WarmTextPrimary,
-                        lineHeight = 22.sp
-                    )
-                }
-                adviceState.errorMessage != null -> {
-                    Text(
-                        text = adviceState.errorMessage,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = WarmAccent
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    TextButton(onClick = onClearError) {
-                        Text("知道了", color = WarmPrimary)
-                    }
-                }
-                else -> {
-                    Text(
-                        text = "生成后，我会根据本月分类、趋势和小额消费，给你一段具体建议。",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = WarmTextSecondary
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Button(
-                        onClick = onGenerate,
-                        shape = RoundedCornerShape(18.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary)
-                    ) {
-                        Icon(
-                            Icons.Rounded.AutoAwesome,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text("生成本月建议")
+                        Spacer(Modifier.height(12.dp))
+                        Button(
+                            onClick = onGenerate,
+                            shape = RoundedCornerShape(18.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary)
+                        ) {
+                            Icon(
+                                Icons.Rounded.AutoAwesome,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text("生成本月建议")
+                        }
                     }
                 }
             }

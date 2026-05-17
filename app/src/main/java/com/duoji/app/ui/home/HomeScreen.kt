@@ -1,6 +1,11 @@
 package com.duoji.app.ui.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,10 +22,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.duoji.app.data.local.entity.TransactionEntity
+import com.duoji.app.ui.components.animation.AnimatedProgressBar
+import com.duoji.app.ui.components.animation.AnimatedSection
+import com.duoji.app.ui.components.animation.PressableCard
+import com.duoji.app.ui.components.animation.StaggeredListItem
 import com.duoji.app.ui.theme.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -86,26 +94,54 @@ fun HomeScreen(
                 .padding(horizontal = 20.dp)
         ) {
             Spacer(Modifier.height(16.dp))
-            Header()
+
+            // 1. Header: fade in + slide from top
+            AnimatedSection(delayMillis = 0, animDuration = 400) {
+                Header()
+            }
+
             Spacer(Modifier.height(20.dp))
-            HeroCard(uiState)
+
+            // 2. HeroCard: delay 80ms
+            AnimatedSection(delayMillis = 80, animDuration = 450) {
+                HeroCard(uiState)
+            }
+
             Spacer(Modifier.height(16.dp))
-            AiTipCard(uiState)
+
+            // 3. AiTipCard: delay 100ms
+            AnimatedSection(delayMillis = 100, animDuration = 400) {
+                AiTipCard(uiState)
+            }
+
             Spacer(Modifier.height(16.dp))
-            ActionRow(
-                onNavigateToStatistics = onNavigateToStatistics,
-                onNavigateToManualRecord = onNavigateToManualRecord
-            )
+
+            // 4. ActionRow: delay 140ms
+            AnimatedSection(delayMillis = 140, animDuration = 400) {
+                ActionRow(
+                    onNavigateToStatistics = onNavigateToStatistics,
+                    onNavigateToManualRecord = onNavigateToManualRecord
+                )
+            }
+
             Spacer(Modifier.height(16.dp))
+
             if (uiState.topCategories.isNotEmpty()) {
-                TopCategoriesSection(uiState)
+                // 5. TopCategories: delay 180ms
+                AnimatedSection(delayMillis = 180, animDuration = 400) {
+                    TopCategoriesSection(uiState)
+                }
                 Spacer(Modifier.height(16.dp))
             }
+
+            // 6. Recent transactions or empty state
             if (uiState.transactionCount > 0) {
-                RecentTransactionsSection(
-                    recentTransactions = uiState.recentTransactions,
-                    onClick = onNavigateToBillList
-                )
+                AnimatedSection(delayMillis = 220, animDuration = 400) {
+                    RecentTransactionsSection(
+                        recentTransactions = uiState.recentTransactions,
+                        onClick = onNavigateToBillList
+                    )
+                }
                 Spacer(Modifier.height(16.dp))
             } else {
                 EmptyBillEntry(
@@ -115,7 +151,7 @@ fun HomeScreen(
                 )
                 Spacer(Modifier.height(16.dp))
             }
-            Spacer(Modifier.height(100.dp)) // Space for FAB
+            Spacer(Modifier.height(100.dp))
         }
     }
 }
@@ -129,13 +165,10 @@ private fun ActionRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Statistics entry
-        Card(
+        PressableCard(
             onClick = onNavigateToStatistics,
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = WarmCard),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            containerColor = WarmCard
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -172,13 +205,10 @@ private fun ActionRow(
             }
         }
 
-        // Manual record entry
-        Card(
+        PressableCard(
             onClick = onNavigateToManualRecord,
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = WarmCard),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            containerColor = WarmCard
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -368,13 +398,16 @@ private fun TopCategoriesSection(state: HomeUiState) {
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                state.topCategories.forEach { (category, amount) ->
-                    CategoryBar(
-                        category = category,
-                        amount = amount,
-                        maxAmount = state.topCategories.firstOrNull()?.second ?: amount,
-                        modifier = Modifier.padding(vertical = 6.dp)
-                    )
+                state.topCategories.forEachIndexed { index, (category, amount) ->
+                    // Staggered category bars
+                    StaggeredListItem(index = index, delayPerItem = 60) {
+                        CategoryBar(
+                            category = category,
+                            amount = amount,
+                            maxAmount = state.topCategories.firstOrNull()?.second ?: amount,
+                            modifier = Modifier.padding(vertical = 6.dp)
+                        )
+                    }
                 }
             }
         }
@@ -409,21 +442,12 @@ private fun CategoryBar(
             )
         }
         Spacer(Modifier.height(6.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(WarmBackground)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(fraction)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(color)
-            )
-        }
+        AnimatedProgressBar(
+            progress = fraction,
+            barColor = color,
+            trackColor = WarmBackground,
+            animDuration = 500
+        )
     }
 }
 
@@ -440,42 +464,45 @@ private fun RecentTransactionsSection(
             color = WarmTextPrimary
         )
         Spacer(Modifier.height(12.dp))
-        Card(
+        PressableCard(
             onClick = onClick,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = WarmCard),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            containerColor = WarmCard
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                recentTransactions.take(3).forEach { tx ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                recentTransactions.take(3).forEachIndexed { index, tx ->
+                    StaggeredListItem(
+                        index = index,
+                        delayPerItem = 50,
+                        animDuration = 350
                     ) {
-                        Box(
+                        Row(
                             modifier = Modifier
-                                .size(8.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(
-                                    if (tx.type == "income") WarmIncome else WarmExpense
-                                )
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Text(
-                            text = tx.category,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = WarmTextPrimary,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = "¥${formatAmount(tx.amount)}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (tx.type == "income") WarmIncome else WarmExpense,
-                            fontWeight = FontWeight.Medium
-                        )
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(
+                                        if (tx.type == "income") WarmIncome else WarmExpense
+                                    )
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                text = tx.category,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = WarmTextPrimary,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = "¥${formatAmount(tx.amount)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (tx.type == "income") WarmIncome else WarmExpense,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -490,7 +517,6 @@ private fun RecentTransactionsSection(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EmptyBillEntry(
     onClick: () -> Unit,
@@ -514,6 +540,7 @@ private fun EmptyBillEntry(
                 modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Spacer(Modifier.height(8.dp))
                 Icon(
                     Icons.Rounded.ReceiptLong,
                     contentDescription = null,
@@ -521,42 +548,49 @@ private fun EmptyBillEntry(
                     modifier = Modifier.size(48.dp)
                 )
                 Spacer(Modifier.height(12.dp))
-                Text(
-                    text = "还没有记录，今天可以先轻松记一笔。",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = WarmTextSecondary,
-                    textAlign = TextAlign.Center
-                )
+                AnimatedSection(delayMillis = 100) {
+                    Text(
+                        text = "还没有记录，今天可以先轻松记一笔。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = WarmTextSecondary,
+                        textAlign = TextAlign.Center
+                    )
+                }
                 Spacer(Modifier.height(6.dp))
-                Text(
-                    text = "试试输入：午饭35，咖啡18，地铁6",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = WarmTextSecondary.copy(alpha = 0.6f),
-                    textAlign = TextAlign.Center
-                )
+                AnimatedSection(delayMillis = 150) {
+                    Text(
+                        text = "试试输入：午饭35，咖啡18，地铁6",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = WarmTextSecondary.copy(alpha = 0.6f),
+                        textAlign = TextAlign.Center
+                    )
+                }
                 Spacer(Modifier.height(16.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onAiRecord,
-                        shape = RoundedCornerShape(18.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = WarmPrimary)
+                AnimatedSection(delayMillis = 200) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("AI 记一笔")
-                    }
-                    Button(
-                        onClick = onManualRecord,
-                        shape = RoundedCornerShape(18.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary)
-                    ) {
-                        Icon(Icons.Rounded.EditNote, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("手动记一笔")
+                        OutlinedButton(
+                            onClick = onAiRecord,
+                            shape = RoundedCornerShape(18.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = WarmPrimary)
+                        ) {
+                            Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("AI 记一笔")
+                        }
+                        Button(
+                            onClick = onManualRecord,
+                            shape = RoundedCornerShape(18.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary)
+                        ) {
+                            Icon(Icons.Rounded.EditNote, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("手动记一笔")
+                        }
                     }
                 }
+                Spacer(Modifier.height(8.dp))
             }
         }
     }
