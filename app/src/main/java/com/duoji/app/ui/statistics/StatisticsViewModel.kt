@@ -1,5 +1,6 @@
 package com.duoji.app.ui.statistics
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.duoji.app.DuoJiApplication
@@ -12,6 +13,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -77,14 +79,30 @@ class StatisticsViewModel : ViewModel() {
 
         observeJob?.cancel()
         observeJob = viewModelScope.launch {
-            repository.observeTransactionsByMonth(year, month).collect { transactions ->
-                val statistics = useCase.buildMonthlyStatistics(transactions, year, month)
-                _uiState.value = _uiState.value.copy(
-                    statistics = statistics,
-                    isLoading = false,
-                    errorMessage = null
-                )
-            }
+            repository.observeTransactionsByMonth(year, month)
+                .catch { e ->
+                    Log.e("StatisticsVM", "loadMonth: Flow error", e)
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = "加载统计数据失败：${e.localizedMessage ?: "未知错误"}"
+                    )
+                }
+                .collect { transactions ->
+                    try {
+                        val statistics = useCase.buildMonthlyStatistics(transactions, year, month)
+                        _uiState.value = _uiState.value.copy(
+                            statistics = statistics,
+                            isLoading = false,
+                            errorMessage = null
+                        )
+                    } catch (e: Exception) {
+                        Log.e("StatisticsVM", "loadMonth: buildMonthlyStatistics failed", e)
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            errorMessage = "统计数据生成失败：${e.localizedMessage ?: "未知错误"}"
+                        )
+                    }
+                }
         }
     }
 
@@ -100,7 +118,9 @@ class StatisticsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                Log.d("StatisticsVM", "generateMonthlyAdvice: starting...")
                 val advice = adviceRepository.generateAdvice(stats)
+                Log.d("StatisticsVM", "generateMonthlyAdvice: success, length=${advice.length}")
                 _uiState.value = _uiState.value.copy(
                     adviceState = MonthlyAdviceState(
                         isLoading = false,
@@ -108,6 +128,7 @@ class StatisticsViewModel : ViewModel() {
                     )
                 )
             } catch (e: Exception) {
+                Log.e("StatisticsVM", "generateMonthlyAdvice failed", e)
                 _uiState.value = _uiState.value.copy(
                     adviceState = MonthlyAdviceState(
                         isLoading = false,

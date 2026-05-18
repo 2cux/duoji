@@ -89,4 +89,6 @@ object TransactionStore {
  */
 object ParseResultStore {
     var drafts: List<TransactionDraft> = emptyList()
+    /** Whether the parse result came from local fallback (AI was configured but failed) */
+    var usingLocalFallback: Boolean = false
 }

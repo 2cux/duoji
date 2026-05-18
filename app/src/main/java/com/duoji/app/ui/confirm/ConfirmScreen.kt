@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.duoji.app.data.model.TransactionDraft
 import com.duoji.app.data.model.TransactionType
+import com.duoji.app.data.store.ParseResultStore
 import com.duoji.app.ui.components.animation.AnimatedAmountText
 import com.duoji.app.ui.components.animation.AnimatedSection
 import com.duoji.app.ui.theme.*
@@ -158,6 +159,36 @@ fun ConfirmScreen(
                         )
                     }
                 }
+
+                // Local fallback warning
+                if (ParseResultStore.usingLocalFallback) {
+                    Spacer(Modifier.height(12.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = WarningLight),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Rounded.WarningAmber,
+                                contentDescription = null,
+                                tint = WarmWarning,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "AI 识别暂时不可用，当前使用本地模式解析，分类可能不准确。请确认后保存。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = WarmTextPrimary
+                            )
+                        }
+                    }
+                }
+
                 Spacer(Modifier.height(16.dp))
             }
 

@@ -1,5 +1,6 @@
 package com.duoji.app.data.ai
 
+import android.util.Log
 import com.duoji.app.data.model.*
 import com.duoji.app.data.settings.SettingsRepository
 import com.duoji.app.domain.statistics.MonthlyStatistics
@@ -41,14 +42,21 @@ class MonthlyAdviceRepository(
                 && settings.apiKey.isNotBlank()
                 && settings.modelName.isNotBlank()
 
+        Log.d("MonthlyAdviceRepo", "generateAdvice: canUseDeepSeek=$canUseDeepSeek, useRealAI=${settings.useRealAI}, " +
+                "apiKey=${if (settings.apiKey.isNotBlank()) "***" else "empty"}")
+
         if (canUseDeepSeek) {
             try {
-                return generateWithDeepSeek(statistics, settings.apiBaseUrl, settings.apiKey, settings.modelName)
-            } catch (_: Exception) {
-                // Fallback to local
+                val result = generateWithDeepSeek(statistics, settings.apiBaseUrl, settings.apiKey, settings.modelName)
+                Log.d("MonthlyAdviceRepo", "generateAdvice: DeepSeek 成功, length=${result.length}")
+                return result
+            } catch (e: Exception) {
+                Log.e("MonthlyAdviceRepo", "generateAdvice: DeepSeek 失败 ${e.javaClass.simpleName}: ${e.message}", e)
             }
         }
-        return LocalMonthlyAdviceGenerator.generate(statistics)
+        val local = LocalMonthlyAdviceGenerator.generate(statistics)
+        Log.d("MonthlyAdviceRepo", "generateAdvice: 使用本地生成, length=${local.length}")
+        return local
     }
 
     private suspend fun generateWithDeepSeek(
@@ -59,6 +67,8 @@ class MonthlyAdviceRepository(
     ): String {
         val endpoint = apiBaseUrl.trimEnd('/') + "/chat/completions"
         val prompt = MonthlyAdvicePromptBuilder.buildPrompt(statistics)
+
+        Log.d("MonthlyAdviceRepo", "generateWithDeepSeek: POST $endpoint, model=$modelName")
 
         val request = AIParseRequest(
             model = modelName,
@@ -74,11 +84,18 @@ class MonthlyAdviceRepository(
         }.body()
 
         response.error?.let { error ->
-            throw Exception("API 错误")
+            Log.e("MonthlyAdviceRepo", "generateWithDeepSeek: API error=${error.message}")
+            throw Exception("API 错误：${error.message}")
         }
 
-        return response.choices.firstOrNull()?.message?.content
-            ?: throw Exception("AI 返回为空")
+        val content = response.choices.firstOrNull()?.message?.content
+        if (content == null) {
+            Log.e("MonthlyAdviceRepo", "generateWithDeepSeek: 返回内容为空")
+            throw Exception("AI 返回为空")
+        }
+
+        Log.d("MonthlyAdviceRepo", "generateWithDeepSeek: 成功, content length=${content.length}")
+        return content
     }
 
     fun cleanup() {
