@@ -159,7 +159,7 @@ class HomeViewModel : ViewModel() {
 
         val daysBetween = ChronoUnit.DAYS.between(startDate, endDate).toInt()
         val points = (0..daysBetween).map { days ->
-            val date = startDate.plusDays(days)
+            val date = startDate.plusDays(days.toLong())
             DailyExpensePoint(
                 date = date,
                 amount = expensesByDate[date] ?: 0.0
