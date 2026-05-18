@@ -13,8 +13,8 @@ android {
         applicationId = "com.duoji.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.0.2-stat-compose-crash-fix"
+        versionCode = 5
+        versionName = "1.0.4-home-interactive-trend"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

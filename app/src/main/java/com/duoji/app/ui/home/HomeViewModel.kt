@@ -11,6 +11,33 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
+
+enum class TrendRange {
+    LAST_7_DAYS, LAST_14_DAYS, CURRENT_MONTH
+}
+
+data class DailyExpensePoint(
+    val date: LocalDate,
+    val amount: Double
+)
+
+data class ExpenseTrendSummary(
+    val totalAmount: Double = 0.0,
+    val averageDailyAmount: Double = 0.0,
+    val maxDay: LocalDate? = null,
+    val maxAmount: Double = 0.0,
+    val recordDays: Int = 0
+)
+
+data class ExpenseTrendUiState(
+    val range: TrendRange = TrendRange.LAST_7_DAYS,
+    val points: List<DailyExpensePoint> = emptyList(),
+    val summary: ExpenseTrendSummary = ExpenseTrendSummary(),
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null
+)
 
 data class HomeUiState(
     val monthlyExpense: Double = 0.0,
@@ -31,6 +58,9 @@ class HomeViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState(aiTip = getDefaultTip(0.0)))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    private val _trendState = MutableStateFlow(ExpenseTrendUiState())
+    val trendState: StateFlow<ExpenseTrendUiState> = _trendState.asStateFlow()
+
     init {
         viewModelScope.launch {
             repository.observeCurrentMonthTransactions().collect { transactions ->
@@ -40,6 +70,11 @@ class HomeViewModel : ViewModel() {
         viewModelScope.launch {
             repository.observeRecentTransactions(5).collect { recent ->
                 _uiState.value = _uiState.value.copy(recentTransactions = recent)
+            }
+        }
+        viewModelScope.launch {
+            repository.observeAllTransactions().collect { transactions ->
+                computeTrendData(transactions)
             }
         }
     }
@@ -90,6 +125,75 @@ class HomeViewModel : ViewModel() {
             recentTransactions = _uiState.value.recentTransactions,
             aiTip = generateTip(monthlyExpense, monthlyIncome, count, expenseByCategory)
         )
+    }
+
+    fun setTrendRange(range: TrendRange) {
+        _trendState.value = _trendState.value.copy(range = range, isLoading = true)
+        viewModelScope.launch {
+            repository.observeAllTransactions().first().let { transactions ->
+                computeTrendData(transactions)
+            }
+        }
+    }
+
+    private fun computeTrendData(transactions: List<TransactionEntity>) {
+        val currentState = _trendState.value
+        val range = currentState.range
+        val now = LocalDate.now()
+
+        val (startDate, endDate) = when (range) {
+            TrendRange.LAST_7_DAYS -> now.minusDays(6) to now
+            TrendRange.LAST_14_DAYS -> now.minusDays(13) to now
+            TrendRange.CURRENT_MONTH -> now.withDayOfMonth(1) to now
+        }
+
+        val startMs = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val endMs = endDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+        val expenseTransactions = transactions
+            .filter { it.type == "expense" && it.occurredAt in startMs until endMs }
+
+        val expensesByDate = expenseTransactions
+            .groupBy { TransactionRepository.millisToLocalDate(it.occurredAt) }
+            .mapValues { safeAmount(it.value.sumOf { t -> t.amount }) }
+
+        val daysBetween = ChronoUnit.DAYS.between(startDate, endDate).toInt()
+        val points = (0..daysBetween).map { days ->
+            val date = startDate.plusDays(days)
+            DailyExpensePoint(
+                date = date,
+                amount = expensesByDate[date] ?: 0.0
+            )
+        }
+
+        val totalAmount = safeAmount(points.sumOf { it.amount })
+        val dayCount = points.size
+        val averageDailyAmount = safeDiv(totalAmount, dayCount.toDouble())
+        val maxPoint = if (points.isEmpty()) null else points.maxByOrNull { safeAmount(it.amount) }
+        val maxDay = maxPoint?.date
+        val maxAmount = safeAmount(maxPoint?.amount ?: 0.0)
+        val recordDays = points.count { it.amount > 0 }
+
+        _trendState.value = currentState.copy(
+            points = points,
+            summary = ExpenseTrendSummary(
+                totalAmount = totalAmount,
+                averageDailyAmount = averageDailyAmount,
+                maxDay = maxDay,
+                maxAmount = maxAmount,
+                recordDays = recordDays
+            ),
+            isLoading = false,
+            errorMessage = null
+        )
+    }
+
+    private fun safeAmount(value: Double): Double {
+        return if (value.isNaN() || value.isInfinite()) 0.0 else value
+    }
+
+    private fun safeDiv(a: Double, b: Double): Double {
+        return if (b == 0.0 || a.isNaN() || a.isInfinite()) 0.0 else a / b
     }
 
     private fun generateTip(expense: Double, income: Double, count: Int, topCategories: List<Pair<String, Double>>): String {
