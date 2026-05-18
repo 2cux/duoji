@@ -4,6 +4,9 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -295,7 +298,7 @@ fun SettingsScreen(
                         // Status text with crossfade
                         AnimatedContent(
                             targetState = Triple(uiState.useRealAI, uiState.apiKey.isBlank(), true),
-                            transitionSpec = { Crossfade(tween(300)) },
+                            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
                             label = "aiStatus"
                         ) { (useReal, keyBlank, _) ->
                             val statusText = when {

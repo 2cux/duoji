@@ -46,7 +46,7 @@ fun StaggeredListItem(
                 durationMillis = animDuration,
                 delayMillis = index * delayPerItem
             )
-        ) { offsetPx },
+        ) { offsetPx.toInt() },
         modifier = modifier
     ) {
         content()

@@ -208,7 +208,7 @@ private fun MonthSelector(
         Spacer(Modifier.width(12.dp))
         AnimatedContent(
             targetState = Pair(year, month),
-            transitionSpec = { Crossfade(tween(300)) },
+            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
             label = "monthLabel"
         ) { (y, m) ->
             Text(
@@ -319,7 +319,7 @@ private fun MonthlyOverviewCard(stats: MonthlyStatistics?) {
                     Spacer(Modifier.height(2.dp))
                     AnimatedContent(
                         targetState = stats.transactionCount,
-                        transitionSpec = { Crossfade(tween(300)) },
+                        transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
                         label = "txCount"
                     ) { count ->
                         Text(
@@ -533,7 +533,7 @@ private fun TopExpenseCard(stats: MonthlyStatistics?) {
 
             AnimatedContent(
                 targetState = top.amount,
-                transitionSpec = { Crossfade(tween(300)) },
+                transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
                 label = "topExpense"
             ) { _ ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -666,7 +666,7 @@ private fun AiMonthlyAdviceCard(
 
             AnimatedContent(
                 targetState = adviceState,
-                transitionSpec = { Crossfade(tween(300)) },
+                transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
                 label = "adviceState",
                 modifier = Modifier.fillMaxWidth()
             ) { state ->

@@ -26,7 +26,7 @@ fun AnimatedSection(
             animationSpec = tween(durationMillis = animDuration, delayMillis = delayMillis)
         ) + slideInVertically(
             animationSpec = tween(durationMillis = animDuration, delayMillis = delayMillis)
-        ) { offsetPx },
+        ) { offsetPx.toInt() },
         modifier = modifier
     ) {
         content()

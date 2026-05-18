@@ -1,7 +1,7 @@
 package com.duoji.app.ui.bill
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.animateColorAsState
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -258,8 +258,7 @@ fun BillEditScreen(
                         )
                         ExposedDropdownMenu(
                             expanded = showCategoryDropdown,
-                            onDismissRequest = { showCategoryDropdown = false },
-                            containerColor = WarmCard
+                            onDismissRequest = { showCategoryDropdown = false }
                         ) {
                             categories.forEach { category ->
                                 DropdownMenuItem(
@@ -415,7 +414,7 @@ fun BillEditScreen(
             ) {
                 AnimatedContent(
                     targetState = state.isSaving,
-                    transitionSpec = { Crossfade(tween(300)) },
+                    transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
                     label = "saveBtn"
                 ) { saving ->
                     if (saving) {

@@ -167,8 +167,7 @@ fun ManualRecordScreen(
                         )
                         ExposedDropdownMenu(
                             expanded = showTypeDropdown,
-                            onDismissRequest = { showTypeDropdown = false },
-                            containerColor = WarmCard
+                            onDismissRequest = { showTypeDropdown = false }
                         ) {
                             typeOptions.forEach { (value, label) ->
                                 DropdownMenuItem(
@@ -270,8 +269,7 @@ fun ManualRecordScreen(
                         )
                         ExposedDropdownMenu(
                             expanded = showCategoryDropdown,
-                            onDismissRequest = { showCategoryDropdown = false },
-                            containerColor = WarmCard
+                            onDismissRequest = { showCategoryDropdown = false }
                         ) {
                             viewModel.getCategoriesForCurrentType().forEach { category ->
                                 DropdownMenuItem(
@@ -436,7 +434,7 @@ fun ManualRecordScreen(
             ) {
                 AnimatedContent(
                     targetState = uiState.isSaving,
-                    transitionSpec = { Crossfade(tween(300)) },
+                    transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
                     label = "saveBtn"
                 ) { saving ->
                     if (saving) {

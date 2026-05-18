@@ -264,7 +264,7 @@ fun ConfirmScreen(
                 ) {
                     AnimatedContent(
                         targetState = uiState.isSaving,
-                        transitionSpec = { Crossfade(tween(300)) },
+                        transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
                         label = "saveBtn"
                     ) { saving ->
                         if (saving) {
@@ -459,7 +459,7 @@ private fun TransactionEditCard(
                     AnimatedContent(
                         targetState = displayAmount,
                         transitionSpec = {
-                            Crossfade(tween(300))
+                            fadeIn(tween(300)) togetherWith fadeOut(tween(300))
                         },
                         label = "amountPrefix"
                     ) { _ ->
@@ -525,8 +525,7 @@ private fun TransactionEditCard(
 
                 ExposedDropdownMenu(
                     expanded = showCategoryDropdown,
-                    onDismissRequest = { showCategoryDropdown = false },
-                    containerColor = WarmCard
+                    onDismissRequest = { showCategoryDropdown = false }
                 ) {
                     categories.forEach { category ->
                         DropdownMenuItem(

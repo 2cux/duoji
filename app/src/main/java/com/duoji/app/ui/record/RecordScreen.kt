@@ -166,7 +166,7 @@ fun RecordScreen(
                     AnimatedContent(
                         targetState = uiState.isProcessing,
                         transitionSpec = {
-                            Crossfade(tween(300))
+                            fadeIn(tween(300)) togetherWith fadeOut(tween(300))
                         },
                         label = "buttonLabel"
                     ) { processing ->
