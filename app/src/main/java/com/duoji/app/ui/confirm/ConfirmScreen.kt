@@ -264,7 +264,7 @@ fun ConfirmScreen(
                 ) {
                     AnimatedContent(
                         targetState = uiState.isSaving,
-                        transitionSpec = { Crossfade(tween(300)).using { it } },
+                        transitionSpec = { Crossfade(tween(300)) },
                         label = "saveBtn"
                     ) { saving ->
                         if (saving) {
@@ -459,7 +459,7 @@ private fun TransactionEditCard(
                     AnimatedContent(
                         targetState = displayAmount,
                         transitionSpec = {
-                            Crossfade(tween(300)).using { it }
+                            Crossfade(tween(300))
                         },
                         label = "amountPrefix"
                     ) { _ ->

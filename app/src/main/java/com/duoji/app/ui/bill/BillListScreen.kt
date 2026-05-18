@@ -222,7 +222,7 @@ private fun MonthSelector(
         AnimatedContent(
             targetState = Pair(year, month),
             transitionSpec = {
-                Crossfade(tween(300)).using { it }
+                Crossfade(tween(300))
             },
             label = "monthLabel"
         ) { (y, m) ->

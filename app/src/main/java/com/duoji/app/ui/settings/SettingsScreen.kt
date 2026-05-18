@@ -295,7 +295,7 @@ fun SettingsScreen(
                         // Status text with crossfade
                         AnimatedContent(
                             targetState = Triple(uiState.useRealAI, uiState.apiKey.isBlank(), true),
-                            transitionSpec = { Crossfade(tween(300)).using { it } },
+                            transitionSpec = { Crossfade(tween(300)) },
                             label = "aiStatus"
                         ) { (useReal, keyBlank, _) ->
                             val statusText = when {
@@ -468,6 +468,7 @@ private fun SettingsSectionHeader(title: String) {
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsActionCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,

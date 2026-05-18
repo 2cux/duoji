@@ -415,7 +415,7 @@ fun BillEditScreen(
             ) {
                 AnimatedContent(
                     targetState = state.isSaving,
-                    transitionSpec = { Crossfade(tween(300)).using { it } },
+                    transitionSpec = { Crossfade(tween(300)) },
                     label = "saveBtn"
                 ) { saving ->
                     if (saving) {

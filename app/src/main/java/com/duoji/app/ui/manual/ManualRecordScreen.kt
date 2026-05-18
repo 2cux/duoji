@@ -436,7 +436,7 @@ fun ManualRecordScreen(
             ) {
                 AnimatedContent(
                     targetState = uiState.isSaving,
-                    transitionSpec = { Crossfade(tween(300)).using { it } },
+                    transitionSpec = { Crossfade(tween(300)) },
                     label = "saveBtn"
                 ) { saving ->
                     if (saving) {

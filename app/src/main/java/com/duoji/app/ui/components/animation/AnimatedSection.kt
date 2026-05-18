@@ -7,6 +7,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun AnimatedSection(
