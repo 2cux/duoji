@@ -1,8 +1,6 @@
 package com.duoji.app.ui.statistics
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -15,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -27,11 +26,10 @@ import com.duoji.app.domain.statistics.DailySummary
 import com.duoji.app.domain.statistics.FrequentSmallExpense
 import com.duoji.app.domain.statistics.MonthlyAdviceState
 import com.duoji.app.domain.statistics.MonthlyStatistics
-import com.duoji.app.ui.components.animation.AnimatedAmountText
-import com.duoji.app.ui.components.animation.AnimatedProgressBar
-import com.duoji.app.ui.components.animation.AnimatedSection
 import com.duoji.app.ui.theme.*
 import java.time.LocalDate
+
+private const val TAG = "StatisticsScreen"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,18 +38,22 @@ fun StatisticsScreen(
     onNavigateToRecord: () -> Unit = {},
     viewModel: StatisticsViewModel = viewModel()
 ) {
+    Log.d(TAG, "StatisticsScreen entered")
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        Log.d(TAG, "StatisticsScreen: LaunchedEffect initial load, " +
+                "isLoading=${uiState.isLoading}, hasStats=${uiState.statistics != null}")
+    }
 
     Scaffold(
         containerColor = WarmBackground,
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        "统计",
+                    Text("统计",
                         style = MaterialTheme.typography.headlineLarge,
-                        color = WarmTextPrimary
-                    )
+                        color = WarmTextPrimary)
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -70,114 +72,129 @@ fun StatisticsScreen(
                 .padding(horizontal = 20.dp)
         ) {
             Spacer(Modifier.height(8.dp))
-
-            // Month selector
-            AnimatedSection(delayMillis = 0, animDuration = 350) {
-                MonthSelector(
-                    year = uiState.selectedYear,
-                    month = uiState.selectedMonth,
-                    onPrevious = { viewModel.previousMonth() },
-                    onNext = { viewModel.nextMonth() }
-                )
-            }
-
+            MonthSelector(
+                year = uiState.selectedYear,
+                month = uiState.selectedMonth,
+                onPrevious = { viewModel.previousMonth() },
+                onNext = { viewModel.nextMonth() }
+            )
             Spacer(Modifier.height(16.dp))
 
-            if (uiState.isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = WarmPrimary)
+            val stats = uiState.statistics
+
+            when {
+                uiState.isLoading -> {
+                    Log.d(TAG, "render: loading")
+                    LoadingContent()
                 }
-            } else {
-                val stats = uiState.statistics
-
-                if (stats == null || stats.transactionCount == 0) {
-                    AnimatedSection(delayMillis = 80, animDuration = 400) {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    Icons.Rounded.Assessment,
-                                    contentDescription = null,
-                                    tint = WarmTextSecondary.copy(alpha = 0.4f),
-                                    modifier = Modifier.size(64.dp)
-                                )
-                                Spacer(Modifier.height(16.dp))
-                                Text(
-                                    text = "这个月还没有足够的记录。",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = WarmTextSecondary
-                                )
-                                Spacer(Modifier.height(6.dp))
-                                Text(
-                                    text = "先记几笔，月底我再帮你看看钱主要花在哪里。",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = WarmTextSecondary.copy(alpha = 0.6f)
-                                )
-                                Spacer(Modifier.height(20.dp))
-                                Button(
-                                    onClick = onNavigateToRecord,
-                                    shape = RoundedCornerShape(18.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary)
-                                ) {
-                                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(Modifier.width(6.dp))
-                                    Text("去记一笔")
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    // Monthly overview card
-                    AnimatedSection(delayMillis = 80, animDuration = 400) {
-                        MonthlyOverviewCard(stats)
-                    }
-
+                uiState.errorMessage != null -> {
+                    Log.d(TAG, "render: error=${uiState.errorMessage}")
+                    ErrorContent(uiState.errorMessage!!)
+                }
+                stats == null || stats.transactionCount == 0 -> {
+                    Log.d(TAG, "render: empty")
+                    EmptyContent(onNavigateToRecord)
+                }
+                else -> {
+                    Log.d(TAG, "render: content, txCount=${stats.transactionCount}, " +
+                            "expense=${stats.totalExpense}, " +
+                            "categories=${stats.categorySummaries.size}, " +
+                            "dailyDays=${stats.dailySummaries.size}")
+                    MonthlyOverviewCard(stats)
                     Spacer(Modifier.height(16.dp))
-
-                    // Category breakdown card
-                    AnimatedSection(delayMillis = 140, animDuration = 400) {
-                        CategoryBreakdownCard(stats)
-                    }
-
+                    CategoryBreakdownCard(stats)
                     Spacer(Modifier.height(16.dp))
-
-                    // Daily trend card
-                    AnimatedSection(delayMillis = 200, animDuration = 400) {
-                        DailyTrendCard(stats)
-                    }
-
+                    DailyTrendCard(stats)
                     Spacer(Modifier.height(16.dp))
-
-                    // Top expense card
-                    AnimatedSection(delayMillis = 260, animDuration = 400) {
-                        TopExpenseCard(stats)
-                    }
-
+                    TopExpenseCard(stats)
                     Spacer(Modifier.height(16.dp))
-
-                    // Frequent small expenses card
-                    AnimatedSection(delayMillis = 320, animDuration = 400) {
-                        FrequentSmallExpensesCard(stats)
-                    }
-
+                    FrequentSmallExpensesCard(stats)
                     Spacer(Modifier.height(16.dp))
-
-                    // AI monthly advice card
-                    AnimatedSection(delayMillis = 380, animDuration = 400) {
-                        AiMonthlyAdviceCard(
-                            adviceState = uiState.adviceState,
-                            onGenerate = { viewModel.generateMonthlyAdvice() },
-                            onClearError = { viewModel.clearAdviceError() }
-                        )
-                    }
-
+                    AiMonthlyAdviceCard(
+                        adviceState = uiState.adviceState,
+                        onGenerate = { viewModel.generateMonthlyAdvice() },
+                        onClearError = { viewModel.clearAdviceError() }
+                    )
                     Spacer(Modifier.height(32.dp))
                 }
+            }
+            Log.d(TAG, "StatisticsScreen render complete")
+        }
+    }
+}
+
+@Composable
+private fun LoadingContent() {
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(color = WarmPrimary)
+    }
+}
+
+@Composable
+private fun ErrorContent(message: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = WarmCard),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp).fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                Icons.Rounded.WarningAmber,
+                contentDescription = null,
+                tint = WarmAccent,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = WarmAccent
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyContent(onNavigateToRecord: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                Icons.Rounded.Assessment,
+                contentDescription = null,
+                tint = WarmTextSecondary.copy(alpha = 0.4f),
+                modifier = Modifier.size(64.dp)
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = "这个月还没有足够的记录。",
+                style = MaterialTheme.typography.bodyMedium,
+                color = WarmTextSecondary
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "先记几笔，月底我再帮你看看钱主要花在哪里。",
+                style = MaterialTheme.typography.bodySmall,
+                color = WarmTextSecondary.copy(alpha = 0.6f)
+            )
+            Spacer(Modifier.height(20.dp))
+            Button(
+                onClick = onNavigateToRecord,
+                shape = RoundedCornerShape(18.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary)
+            ) {
+                Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("去记一笔")
             }
         }
     }
@@ -190,38 +207,23 @@ private fun MonthSelector(
     onPrevious: () -> Unit,
     onNext: () -> Unit
 ) {
-    val now = LocalDate.now()
-    val isCurrentMonth = year == now.year && month == now.monthValue
-
+    val isCurrentMonth = year == LocalDate.now().year && month == LocalDate.now().monthValue
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onPrevious) {
-            Icon(
-                Icons.Rounded.ChevronLeft,
-                contentDescription = "上个月",
-                tint = WarmTextPrimary
-            )
+            Icon(Icons.Rounded.ChevronLeft, contentDescription = "上个月", tint = WarmTextPrimary)
         }
         Spacer(Modifier.width(12.dp))
-        AnimatedContent(
-            targetState = Pair(year, month),
-            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
-            label = "monthLabel"
-        ) { (y, m) ->
-            Text(
-                text = "${y}年${m}月",
-                style = MaterialTheme.typography.titleLarge,
-                color = WarmTextPrimary
-            )
-        }
+        Text(
+            text = "${year}年${month}月",
+            style = MaterialTheme.typography.titleLarge,
+            color = WarmTextPrimary
+        )
         Spacer(Modifier.width(12.dp))
-        IconButton(
-            onClick = onNext,
-            enabled = !isCurrentMonth
-        ) {
+        IconButton(onClick = onNext, enabled = !isCurrentMonth) {
             Icon(
                 Icons.Rounded.ChevronRight,
                 contentDescription = "下个月",
@@ -231,10 +233,10 @@ private fun MonthSelector(
     }
 }
 
-@Composable
-private fun MonthlyOverviewCard(stats: MonthlyStatistics?) {
-    val hasData = stats != null && stats.transactionCount > 0
+// ── MonthlyOverviewCard ──
 
+@Composable
+private fun MonthlyOverviewCard(stats: MonthlyStatistics) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -249,94 +251,63 @@ private fun MonthlyOverviewCard(stats: MonthlyStatistics?) {
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(Modifier.height(16.dp))
-
-            if (!hasData) {
-                Text(
-                    text = "这个月还没有记录，记一笔后这里会展示月度概况。",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = WarmTextSecondary
-                )
-                return@Column
-            }
-
             Text(
                 text = "本月已支出",
                 style = MaterialTheme.typography.bodySmall,
                 color = WarmTextSecondary
             )
             Spacer(Modifier.height(4.dp))
-            AnimatedAmountText(
-                amount = stats!!.totalExpense,
-                prefix = "¥ ",
-                color = WarmExpense,
+            Text(
+                text = "¥ ${formatAmount(stats.totalExpense)}",
                 style = MaterialTheme.typography.displayLarge,
+                color = WarmExpense,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Start
             )
-
             Spacer(Modifier.height(16.dp))
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 Column {
-                    Text(
-                        text = "收入",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = WarmTextSecondary
-                    )
+                    Text("收入", style = MaterialTheme.typography.labelSmall, color = WarmTextSecondary)
                     Spacer(Modifier.height(2.dp))
-                    AnimatedAmountText(
-                        amount = stats.totalIncome,
-                        prefix = "¥ ",
+                    Text(
+                        text = "¥ ${formatAmount(stats.totalIncome)}",
+                        style = MaterialTheme.typography.titleMedium,
                         color = WarmIncome,
-                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
                 Column {
-                    Text(
-                        text = "结余",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = WarmTextSecondary
-                    )
+                    Text("结余", style = MaterialTheme.typography.labelSmall, color = WarmTextSecondary)
                     Spacer(Modifier.height(2.dp))
-                    AnimatedAmountText(
-                        amount = stats.balance,
-                        prefix = "¥ ",
+                    Text(
+                        text = "¥ ${formatAmount(stats.balance)}",
+                        style = MaterialTheme.typography.titleMedium,
                         color = if (stats.balance >= 0) WarmIncome else WarmAccent,
-                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
                 Column {
-                    Text(
-                        text = "笔数",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = WarmTextSecondary
-                    )
+                    Text("笔数", style = MaterialTheme.typography.labelSmall, color = WarmTextSecondary)
                     Spacer(Modifier.height(2.dp))
-                    AnimatedContent(
-                        targetState = stats.transactionCount,
-                        transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
-                        label = "txCount"
-                    ) { count ->
-                        Text(
-                            text = "${count}笔",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = WarmTextPrimary,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
+                    Text(
+                        text = "${stats.transactionCount}笔",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = WarmTextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }
     }
 }
 
+// ── CategoryBreakdownCard ──
+
 @Composable
-private fun CategoryBreakdownCard(stats: MonthlyStatistics?) {
+private fun CategoryBreakdownCard(stats: MonthlyStatistics) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -352,33 +323,36 @@ private fun CategoryBreakdownCard(stats: MonthlyStatistics?) {
             )
             Spacer(Modifier.height(12.dp))
 
-            val categories = stats?.categorySummaries
-            if (categories.isNullOrEmpty()) {
-                Text(
-                    text = "还没有支出分类数据。",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = WarmTextSecondary
-                )
-                return@Column
-            }
-
-            categories.forEachIndexed { index, cat ->
-                CategoryBar(
-                    cat,
-                    categories.first().amount,
-                    delay = index * 80
-                )
-                Spacer(Modifier.height(10.dp))
+            val categories = stats.categorySummaries
+            if (categories.isEmpty()) {
+                EmptyCategoryText()
+            } else {
+                Log.d(TAG, "CategoryBreakdownCard: ${categories.size} categories")
+                val maxAmount = categories.first().amount
+                categories.forEachIndexed { index, cat ->
+                    val pct = if (maxAmount > 0) (cat.amount / maxAmount).toFloat().coerceIn(0.05f, 1f) else 0f
+                    CategoryBar(cat, pct)
+                    if (index < categories.size - 1) {
+                        Spacer(Modifier.height(10.dp))
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun CategoryBar(category: CategorySummary, maxAmount: Double, delay: Int = 0) {
-    val color = categoryColor(category.category)
-    val fraction = if (maxAmount > 0) (category.amount / maxAmount).toFloat().coerceIn(0.05f, 1f) else 0f
+private fun EmptyCategoryText() {
+    Text(
+        text = "还没有支出分类数据。",
+        style = MaterialTheme.typography.bodyMedium,
+        color = WarmTextSecondary
+    )
+}
 
+@Composable
+private fun CategoryBar(category: CategorySummary, fraction: Float) {
+    val color = categoryColor(category.category)
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -386,11 +360,7 @@ private fun CategoryBar(category: CategorySummary, maxAmount: Double, delay: Int
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = category.category,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = WarmTextPrimary
-                )
+                Text(category.category, style = MaterialTheme.typography.bodyMedium, color = WarmTextPrimary)
                 Spacer(Modifier.width(6.dp))
                 Text(
                     text = "${String.format("%.0f", category.percentage)}%",
@@ -405,18 +375,25 @@ private fun CategoryBar(category: CategorySummary, maxAmount: Double, delay: Int
             )
         }
         Spacer(Modifier.height(6.dp))
-        AnimatedProgressBar(
-            progress = fraction,
-            barColor = color,
-            trackColor = WarmBackground,
-            animDelay = delay,
-            animDuration = 500
-        )
+        Box(
+            modifier = Modifier.fillMaxWidth().height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(WarmBackground)
+        ) {
+            Box(
+                modifier = Modifier.fillMaxHeight()
+                    .fillMaxWidth(fraction.coerceIn(0f, 1f))
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(color)
+            )
+        }
     }
 }
 
+// ── DailyTrendCard ──
+
 @Composable
-private fun DailyTrendCard(stats: MonthlyStatistics?) {
+private fun DailyTrendCard(stats: MonthlyStatistics) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -432,23 +409,23 @@ private fun DailyTrendCard(stats: MonthlyStatistics?) {
             )
             Spacer(Modifier.height(12.dp))
 
-            val days = stats?.dailySummaries?.filter { it.expense > 0 }
-            if (days.isNullOrEmpty()) {
+            val days = stats.dailySummaries.filter { it.expense > 0 }
+            if (days.isEmpty()) {
                 Text(
                     text = "还没有支出记录，记一笔后这里会展示每日趋势。",
                     style = MaterialTheme.typography.bodyMedium,
                     color = WarmTextSecondary
                 )
-                return@Column
-            }
-
-            val maxExpense = days.maxOf { it.expense }
-            val showDays = if (days.size > 14) days.takeLast(14) else days
-
-            Column {
+            } else {
+                Log.d(TAG, "DailyTrendCard: ${days.size} days")
+                val maxExpense = days.maxOf { it.expense }
+                val showDays = if (days.size > 14) days.takeLast(14) else days
                 showDays.forEachIndexed { index, day ->
-                    DailyTrendRow(day, maxExpense, delay = index * 20)
-                    Spacer(Modifier.height(6.dp))
+                    val fraction = if (maxExpense > 0) (day.expense / maxExpense).toFloat().coerceIn(0.03f, 1f) else 0f
+                    DailyTrendRow(day, fraction)
+                    if (index < showDays.size - 1) {
+                        Spacer(Modifier.height(6.dp))
+                    }
                 }
             }
         }
@@ -456,9 +433,7 @@ private fun DailyTrendCard(stats: MonthlyStatistics?) {
 }
 
 @Composable
-private fun DailyTrendRow(day: DailySummary, maxExpense: Double, delay: Int = 0) {
-    val fraction = if (maxExpense > 0) (day.expense / maxExpense).toFloat().coerceIn(0.03f, 1f) else 0f
-
+private fun DailyTrendRow(day: DailySummary, fraction: Float) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()
@@ -471,22 +446,13 @@ private fun DailyTrendRow(day: DailySummary, maxExpense: Double, delay: Int = 0)
         )
         Spacer(Modifier.width(8.dp))
         Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(20.dp)
+            modifier = Modifier.weight(1f).height(20.dp)
                 .clip(RoundedCornerShape(4.dp))
                 .background(WarmBackground)
         ) {
-            // Use AnimatedProgressBar directly
-            val animatedFraction by animateFloatAsState(
-                targetValue = fraction,
-                animationSpec = tween(500, delayMillis = delay),
-                label = "dailyBar"
-            )
             Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(animatedFraction)
+                modifier = Modifier.fillMaxHeight()
+                    .fillMaxWidth(fraction.coerceIn(0f, 1f))
                     .clip(RoundedCornerShape(4.dp))
                     .background(WarmPrimary.copy(alpha = 0.7f))
             )
@@ -502,8 +468,10 @@ private fun DailyTrendRow(day: DailySummary, maxExpense: Double, delay: Int = 0)
     }
 }
 
+// ── TopExpenseCard ──
+
 @Composable
-private fun TopExpenseCard(stats: MonthlyStatistics?) {
+private fun TopExpenseCard(stats: MonthlyStatistics) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -519,27 +487,18 @@ private fun TopExpenseCard(stats: MonthlyStatistics?) {
             )
             Spacer(Modifier.height(12.dp))
 
-            val top = stats?.topExpense
+            val top = stats.topExpense
             if (top == null) {
-                AnimatedSection(delayMillis = 100) {
-                    Text(
-                        text = "还没有明显的大额支出记录。",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = WarmTextSecondary
-                    )
-                }
-                return@Column
-            }
-
-            AnimatedContent(
-                targetState = top.amount,
-                transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
-                label = "topExpense"
-            ) { _ ->
+                Text(
+                    text = "还没有明显的大额支出记录。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = WarmTextSecondary
+                )
+            } else {
+                Log.d(TAG, "TopExpenseCard: category=${top.category}, amount=${top.amount}")
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        modifier = Modifier
-                            .size(40.dp)
+                        modifier = Modifier.size(40.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(WarningLight),
                         contentAlignment = Alignment.Center
@@ -578,8 +537,10 @@ private fun TopExpenseCard(stats: MonthlyStatistics?) {
     }
 }
 
+// ── FrequentSmallExpensesCard ──
+
 @Composable
-private fun FrequentSmallExpensesCard(stats: MonthlyStatistics?) {
+private fun FrequentSmallExpensesCard(stats: MonthlyStatistics) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -595,21 +556,21 @@ private fun FrequentSmallExpensesCard(stats: MonthlyStatistics?) {
             )
             Spacer(Modifier.height(12.dp))
 
-            val freqExpenses = stats?.frequentSmallExpenses
-            if (freqExpenses.isNullOrEmpty()) {
+            val freq = stats.frequentSmallExpenses
+            if (freq.isEmpty()) {
                 Text(
                     text = "小额消费还不多，节奏挺轻松。",
                     style = MaterialTheme.typography.bodyMedium,
                     color = WarmTextSecondary
                 )
-                return@Column
-            }
-
-            freqExpenses.forEachIndexed { index, fse ->
-                AnimatedSection(delayMillis = index * 60, animDuration = 350) {
+            } else {
+                Log.d(TAG, "FrequentSmallExpensesCard: ${freq.size} items")
+                freq.forEachIndexed { index, fse ->
                     FrequentSmallRow(fse)
+                    if (index < freq.size - 1) {
+                        Spacer(Modifier.height(8.dp))
+                    }
                 }
-                Spacer(Modifier.height(8.dp))
             }
         }
     }
@@ -622,8 +583,7 @@ private fun FrequentSmallRow(fse: FrequentSmallExpense) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Box(
-            modifier = Modifier
-                .size(8.dp)
+            modifier = Modifier.size(8.dp)
                 .clip(RoundedCornerShape(4.dp))
                 .background(WarmWarning)
         )
@@ -635,6 +595,8 @@ private fun FrequentSmallRow(fse: FrequentSmallExpense) {
         )
     }
 }
+
+// ── AiMonthlyAdviceCard ──
 
 @Composable
 private fun AiMonthlyAdviceCard(
@@ -657,77 +619,55 @@ private fun AiMonthlyAdviceCard(
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.width(6.dp))
-                Text(
-                    text = "✨",
-                    style = MaterialTheme.typography.titleSmall
-                )
+                Text("✨", style = MaterialTheme.typography.titleSmall)
             }
             Spacer(Modifier.height(12.dp))
 
-            AnimatedContent(
-                targetState = adviceState,
-                transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
-                label = "adviceState",
-                modifier = Modifier.fillMaxWidth()
-            ) { state ->
-                when {
-                    state.isLoading -> {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = WarmPrimary,
-                                strokeWidth = 2.dp
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                text = "正在生成建议…",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = WarmTextSecondary
-                            )
-                        }
-                    }
-                    state.content != null -> {
-                        Text(
-                            text = state.content,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = WarmTextPrimary,
-                            lineHeight = 22.sp
+            when {
+                adviceState.isLoading -> {
+                    Log.d(TAG, "AiMonthlyAdviceCard: loading")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = WarmPrimary,
+                            strokeWidth = 2.dp
                         )
+                        Spacer(Modifier.width(12.dp))
+                        Text("正在生成建议…", style = MaterialTheme.typography.bodyMedium, color = WarmTextSecondary)
                     }
-                    state.errorMessage != null -> {
-                        Text(
-                            text = state.errorMessage,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = WarmAccent
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        TextButton(onClick = onClearError) {
-                            Text("知道了", color = WarmPrimary)
-                        }
+                }
+                adviceState.content != null -> {
+                    Log.d(TAG, "AiMonthlyAdviceCard: content, length=${adviceState.content.length}")
+                    Text(
+                        text = adviceState.content,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = WarmTextPrimary,
+                        lineHeight = 22.sp
+                    )
+                }
+                adviceState.errorMessage != null -> {
+                    Log.d(TAG, "AiMonthlyAdviceCard: error=${adviceState.errorMessage}")
+                    Text(adviceState.errorMessage, style = MaterialTheme.typography.bodyMedium, color = WarmAccent)
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = onClearError) {
+                        Text("知道了", color = WarmPrimary)
                     }
-                    else -> {
-                        Text(
-                            text = "生成后，我会根据本月分类、趋势和小额消费，给你一段具体建议。",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = WarmTextSecondary
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Button(
-                            onClick = onGenerate,
-                            shape = RoundedCornerShape(18.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary)
-                        ) {
-                            Icon(
-                                Icons.Rounded.AutoAwesome,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text("生成本月建议")
-                        }
+                }
+                else -> {
+                    Text(
+                        text = "生成后，我会根据本月分类、趋势和小额消费，给你一段具体建议。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = WarmTextSecondary
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Button(
+                        onClick = onGenerate,
+                        shape = RoundedCornerShape(18.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary)
+                    ) {
+                        Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("生成本月建议")
                     }
                 }
             }
@@ -735,7 +675,10 @@ private fun AiMonthlyAdviceCard(
     }
 }
 
+// ── Utilities ──
+
 private fun formatAmount(amount: Double): String {
+    if (amount.isNaN() || amount.isInfinite()) return "0"
     return if (amount == amount.toLong().toDouble()) {
         amount.toLong().toString()
     } else {

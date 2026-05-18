@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.duoji.app.ui.components.animation.AnimatedSection
 import com.duoji.app.ui.theme.*
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +45,14 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showClearDialog by remember { mutableStateOf(false) }
     var showApiKey by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val appVersion = remember {
+        try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "未知"
+        } catch (e: Exception) {
+            "未知"
+        }
+    }
 
     if (showClearDialog) {
         AlertDialog(
@@ -415,7 +424,7 @@ fun SettingsScreen(
                     Column(modifier = Modifier.padding(20.dp)) {
                         PreferenceRow(label = "App 名称", value = "多记 / duoji")
                         Spacer(Modifier.height(12.dp))
-                        PreferenceRow(label = "版本", value = "0.1.0 MVP")
+                        PreferenceRow(label = "版本", value = appVersion)
                         Spacer(Modifier.height(12.dp))
                         Text(
                             text = "定位",
