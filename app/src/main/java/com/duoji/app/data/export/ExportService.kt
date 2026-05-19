@@ -3,6 +3,7 @@ package com.duoji.app.data.export
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import androidx.core.content.FileProvider
 import com.duoji.app.data.local.entity.TransactionEntity
 import java.io.File
@@ -17,6 +18,14 @@ class ExportService(private val context: Context) {
         return dir
     }
 
+    private fun getAppVersion(): String {
+        return try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0.0"
+        } catch (e: Exception) {
+            "1.0.0"
+        }
+    }
+
     fun exportCsv(transactions: List<TransactionEntity>): Result<String> {
         return try {
             val content = CsvExportBuilder.build(transactions)
@@ -26,19 +35,22 @@ class ExportService(private val context: Context) {
             shareFile(file, "text/csv")
             Result.success("CSV 已生成，正在打开分享…")
         } catch (e: Exception) {
+            Log.e("ExportService", "CSV export failed: ${e::class.simpleName} - ${e.message}")
             Result.failure(e)
         }
     }
 
     fun exportJson(transactions: List<TransactionEntity>): Result<String> {
         return try {
-            val content = JsonExportBuilder.build(transactions)
+            val version = getAppVersion()
+            val content = JsonExportBuilder.build(transactions, version)
             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))
             val file = File(getExportDir(), "duoji_transactions_${timestamp}.json")
             file.writeText(content, Charsets.UTF_8)
             shareFile(file, "application/json")
             Result.success("JSON 已生成，正在打开分享…")
         } catch (e: Exception) {
+            Log.e("ExportService", "JSON export failed: ${e::class.simpleName} - ${e.message}")
             Result.failure(e)
         }
     }
