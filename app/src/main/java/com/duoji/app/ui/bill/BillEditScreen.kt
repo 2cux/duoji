@@ -51,6 +51,20 @@ fun BillEditScreen(
         }
     }
 
+    LaunchedEffect(state.deleteSuccess) {
+        if (state.deleteSuccess) {
+            android.widget.Toast.makeText(context, "账单已删除", android.widget.Toast.LENGTH_SHORT).show()
+            onNavigateBack()
+        }
+    }
+
+    LaunchedEffect(state.deleteError) {
+        state.deleteError?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.clearDeleteError()
+        }
+    }
+
     LaunchedEffect(state.saveError) {
         state.saveError?.let {
             android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
@@ -448,7 +462,7 @@ fun BillEditScreen(
             // Delete button
             Button(
                 onClick = { showDeleteConfirm = true },
-                enabled = !state.isSaving,
+                enabled = !state.isSaving && !state.isDeleting,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(18.dp),
                 colors = ButtonDefaults.buttonColors(

@@ -35,7 +35,11 @@ data class EditTransactionState(
     val isSaving: Boolean = false,
     val saveSuccess: Boolean = false,
     val saveError: String? = null,
-    val loadError: String? = null
+    val loadError: String? = null,
+    val isDeleting: Boolean = false,
+    val deleteSuccess: Boolean = false,
+    val deleteError: String? = null,
+    val deleted: Boolean = false
 )
 
 class BillEditViewModel : ViewModel() {
@@ -68,10 +72,14 @@ class BillEditViewModel : ViewModel() {
                         updatedAt = entity.updatedAt
                     )
                 } else {
-                    _state.value = _state.value.copy(
-                        isLoading = false,
-                        loadError = "账单未找到"
-                    )
+                    if (_state.value.deleted) {
+                        _state.value = _state.value.copy(isLoading = false)
+                    } else {
+                        _state.value = _state.value.copy(
+                            isLoading = false,
+                            loadError = "账单未找到"
+                        )
+                    }
                 }
             }
         }
@@ -146,14 +154,33 @@ class BillEditViewModel : ViewModel() {
     }
 
     fun delete() {
+        val s = _state.value
+        if (s.isDeleting) return
+        _state.value = s.copy(isDeleting = true, deleteError = null)
+
         viewModelScope.launch {
-            repository.deleteTransactionById(_state.value.id)
-            _state.value = _state.value.copy(saveSuccess = true)
+            try {
+                repository.deleteTransactionById(_state.value.id)
+                _state.value = _state.value.copy(
+                    isDeleting = false,
+                    deleteSuccess = true,
+                    deleted = true
+                )
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    isDeleting = false,
+                    deleteError = "删除失败，请重试"
+                )
+            }
         }
     }
 
     fun clearError() {
         _state.value = _state.value.copy(saveError = null)
+    }
+
+    fun clearDeleteError() {
+        _state.value = _state.value.copy(deleteError = null)
     }
 
     fun categoriesForType(type: String): List<String> {

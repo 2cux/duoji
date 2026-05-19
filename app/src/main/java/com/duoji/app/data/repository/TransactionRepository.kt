@@ -56,6 +56,10 @@ class TransactionRepository(private val dao: TransactionDao) {
         dao.deleteTransactionById(id)
     }
 
+    suspend fun deleteTransactionsByIds(ids: List<String>) {
+        dao.deleteTransactionsByIds(ids)
+    }
+
     fun observeAllTransactions(): Flow<List<TransactionEntity>> =
         dao.observeAllTransactions()
 
