@@ -44,6 +44,7 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showClearDialog by remember { mutableStateOf(false) }
+    var showExportDialog by remember { mutableStateOf(false) }
     var showApiKey by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val appVersion = remember {
@@ -76,6 +77,119 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showClearDialog = false }) {
+                    Text("取消", color = WarmTextSecondary)
+                }
+            },
+            containerColor = WarmCard,
+            shape = RoundedCornerShape(24.dp)
+        )
+    }
+
+    if (showExportDialog) {
+        AlertDialog(
+            onDismissRequest = { showExportDialog = false },
+            title = {
+                Text("备份账本", style = MaterialTheme.typography.titleLarge)
+            },
+            text = {
+                Column {
+                    Text(
+                        "选择导出格式：",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = WarmTextSecondary
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = WarmCardAlt),
+                        onClick = {
+                            showExportDialog = false
+                            viewModel.exportCsv()
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(IncomeLight),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Rounded.FileDownload,
+                                    contentDescription = null,
+                                    tint = WarmIncome,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    "导出为表格文件（CSV）",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = WarmTextPrimary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    "表格文件，可用 Excel / WPS 打开",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = WarmTextSecondary
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = WarmCardAlt),
+                        onClick = {
+                            showExportDialog = false
+                            viewModel.exportJson()
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(ExpenseLight),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Rounded.DataObject,
+                                    contentDescription = null,
+                                    tint = WarmPrimary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    "导出为数据文件（JSON）",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = WarmTextPrimary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    "数据文件，适合迁移或备份",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = WarmTextSecondary
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showExportDialog = false }) {
                     Text("取消", color = WarmTextSecondary)
                 }
             },
@@ -164,29 +278,17 @@ fun SettingsScreen(
             Spacer(Modifier.height(8.dp))
             AnimatedSection(delayMillis = 40, animDuration = 400) {
                 SettingsActionCard(
-                    icon = Icons.Rounded.FileDownload,
+                    icon = Icons.Rounded.Backup,
                     iconTint = WarmIncome,
                     iconBg = IncomeLight,
-                    title = "导出 CSV",
-                    subtitle = "导出后可以自己备份或进一步分析。",
+                    title = "备份账本",
+                    subtitle = "导出一份账本文件，方便自己保存或迁移。",
                     enabled = !uiState.isExporting,
-                    onClick = { viewModel.exportCsv() }
+                    onClick = { showExportDialog = true }
                 )
             }
             Spacer(Modifier.height(8.dp))
             AnimatedSection(delayMillis = 80, animDuration = 400) {
-                SettingsActionCard(
-                    icon = Icons.Rounded.DataObject,
-                    iconTint = WarmPrimary,
-                    iconBg = ExpenseLight,
-                    title = "导出 JSON",
-                    subtitle = "导出后可以自己备份或进一步分析。",
-                    enabled = !uiState.isExporting,
-                    onClick = { viewModel.exportJson() }
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            AnimatedSection(delayMillis = 120, animDuration = 400) {
                 SettingsActionCard(
                     icon = Icons.Rounded.DeleteForever,
                     iconTint = WarmAccent,
