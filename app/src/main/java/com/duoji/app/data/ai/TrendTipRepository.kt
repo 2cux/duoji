@@ -50,25 +50,17 @@ class TrendTipRepository(
     }
 
     fun generateLocalTip(input: TrendSummaryInput): String {
-        if (!input.hasData) return "还没有足够数据，先轻松记一笔吧。"
+        if (!input.hasData) return "数据还不多，先继续记录。"
 
-        if (input.budgetLeft != null && input.budgetLeft >= 0) {
-            return "本月还剩 ¥${input.budgetLeft.toLong()}，当前消费节奏还比较稳。"
-        }
+        if (input.trendDirection == "上升") return "近几天花得略快，注意节奏。"
 
-        if (input.budgetLeft != null && input.budgetLeft < 0) {
-            return "这个月花得有点快，后面几天可以稍微收一收。"
-        }
+        if (input.trendDirection == "下降") return "最近支出下降，节奏不错。"
 
-        if (input.topCategoryName.isNotBlank() && input.totalExpense > 0) {
-            return "最近 ${input.topCategoryName} 花得比较多，可以稍微留意一下。"
-        }
+        if (input.topDay.isNotBlank()) return "有一天支出偏高，可回看明细。"
 
-        if (input.trendDirection == "下降") {
-            return "最近消费节奏比前几天平稳，继续保持。"
-        }
+        if (input.trendDirection == "平稳") return "消费节奏平稳，继续保持。"
 
-        return "消费节奏整体平稳，继续保持记录就好。"
+        return "趋势整体平稳，继续观察。"
     }
 
     suspend fun generateTip(input: TrendSummaryInput): String {
@@ -105,7 +97,7 @@ class TrendTipRepository(
             messages = listOf(
                 AIMessage(
                     role = "system",
-                    content = "你是一个记账 App 的轻量消费提醒助手。请根据统计摘要输出 1 句温和提醒，不要超过 60 个中文字符。不要使用 Markdown、标题、列表。必须结合具体分类、金额或趋势。不要制造焦虑。"
+                    content = "你是记账 App 的趋势提醒助手。请根据趋势摘要输出一句趋势分析和建议，15-30 个中文字符，最多不超过 40 字。关注消费上升、下降、平稳、某天偏高。不要写具体账单分类分析。不要 Markdown、标题、列表。"
                 ),
                 AIMessage(role = "user", content = prompt)
             ),
@@ -130,15 +122,13 @@ class TrendTipRepository(
 
     private fun buildPrompt(input: TrendSummaryInput): String {
         return buildString {
-            append("当前范围：${input.range}。")
+            append("范围：${input.range}。")
             append("总支出：¥${input.totalExpense.toLong()}。")
-            append("日均支出：¥${input.averageExpense.toLong()}。")
-            append("最高消费日：${input.topDay}。")
-            append("最高分类：${input.topCategoryName}，金额 ¥${input.topCategoryAmount.toLong()}。")
-            append("趋势：${input.trendDirection}。")
-            if (input.budgetLeft != null) {
-                append("预算剩余：¥${input.budgetLeft.toLong()}。")
+            append("日均：¥${input.averageExpense.toLong()}。")
+            if (input.topDay.isNotBlank()) {
+                append("最高日：${input.topDay}。")
             }
+            append("趋势：${input.trendDirection}。")
         }
     }
 
@@ -152,9 +142,9 @@ class TrendTipRepository(
             .trim()
             .lines()
             .filter { it.isNotBlank() }
-            .take(2)
-            .joinToString("")
-            .take(80)
+            .firstOrNull()
+            .orEmpty()
+            .take(40)
     }
 
     fun cleanup() {

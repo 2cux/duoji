@@ -920,6 +920,8 @@ private fun StatItem(label: String, value: String, color: Color) {
 
 @Composable
 private fun AiTipCard(state: HomeUiState) {
+    if (state.aiTip.isBlank()) return
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),

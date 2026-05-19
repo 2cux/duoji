@@ -3,6 +3,9 @@ package com.duoji.app.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.duoji.app.DuoJiApplication
+import com.duoji.app.data.ai.HomeTipInput
+import com.duoji.app.data.ai.HomeTipRepository
+import com.duoji.app.data.ai.SmallExpenseSummary
 import com.duoji.app.data.ai.TrendTipRepository
 import com.duoji.app.data.ai.TrendSummaryInput
 import com.duoji.app.data.local.entity.TransactionEntity
@@ -16,6 +19,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
 enum class TrendRange {
@@ -71,10 +75,18 @@ class HomeViewModel : ViewModel() {
     private val trendTipRepository = TrendTipRepository(
         DuoJiApplication.instance.container.settingsRepository
     )
-    private var lastTrendTipCacheKey: String? = null
+    private val trendTipCache = mutableMapOf<String, String>() // dailyKey -> tipText
+    private val trendTipInFlightKeys = mutableSetOf<String>()
     private var trendTipJob: Job? = null
 
-    private val _uiState = MutableStateFlow(HomeUiState(aiTip = getDefaultTip(0.0)))
+    private val homeTipRepository = HomeTipRepository(
+        DuoJiApplication.instance.container.settingsRepository
+    )
+    private var lastHomeTipDailyKey: String? = null
+    private val homeTipInFlightKeys = mutableSetOf<String>()
+    private var homeTipJob: Job? = null
+
+    private val _uiState = MutableStateFlow(HomeUiState(aiTip = "先记一笔，慢慢看清消费。"))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     private val _trendState = MutableStateFlow(ExpenseTrendUiState())
@@ -157,6 +169,52 @@ class HomeViewModel : ViewModel() {
         val avgDaily = safeDiv(monthlyExpense, expenseDaysCount.toDouble())
         val remaining = if (currentBudget > 0) safeAmount(currentBudget - monthlyExpense) else 0.0
 
+        // ── Home AI Tip ──
+        val expenseTransactions = transactions.filter { it.type == "expense" }
+        val hasExpenseData = expenseTransactions.isNotEmpty()
+
+        val frequentSmallExpenses = if (hasExpenseData) computeFrequentSmallExpenses(expenseTransactions) else emptyList()
+        val (largestName, largestAmount) = if (hasExpenseData) computeLargestExpense(expenseTransactions) else ("" to 0.0)
+
+        val tipInput = HomeTipInput(
+            monthExpense = monthlyExpense,
+            todayExpense = todayExpense,
+            dailyAverage = avgDaily,
+            topCategories = expenseByCategory,
+            frequentSmallExpenses = frequentSmallExpenses,
+            largestExpenseName = largestName,
+            largestExpenseAmount = largestAmount,
+            largestExpenseCategory = expenseByCategory.firstOrNull()?.first ?: "",
+            budgetLeft = if (currentBudget > 0) remaining else null,
+            hasData = hasExpenseData
+        )
+
+        val todayKey = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+        val homeDailyKey = "home_$todayKey"
+        val shouldFetchHomeAI = hasExpenseData && homeDailyKey != lastHomeTipDailyKey && homeDailyKey !in homeTipInFlightKeys
+
+        if (shouldFetchHomeAI) {
+            lastHomeTipDailyKey = homeDailyKey
+            homeTipInFlightKeys.add(homeDailyKey)
+            homeTipJob?.cancel()
+            homeTipJob = viewModelScope.launch {
+                val result = homeTipRepository.generateTip(tipInput)
+                if (homeDailyKey == lastHomeTipDailyKey) {
+                    _uiState.value = _uiState.value.copy(aiTip = result)
+                }
+                homeTipInFlightKeys.remove(homeDailyKey)
+            }
+        }
+
+        // Show cached AI tip if available today, otherwise show fresh local tip
+        val displayTip = if (hasExpenseData && homeDailyKey == lastHomeTipDailyKey) {
+            _uiState.value.aiTip
+        } else if (hasExpenseData) {
+            homeTipRepository.generateLocalTip(tipInput)
+        } else {
+            "先记一笔，慢慢看清消费。"
+        }
+
         _uiState.value = HomeUiState(
             monthlyExpense = monthlyExpense,
             monthlyIncome = monthlyIncome,
@@ -169,7 +227,7 @@ class HomeViewModel : ViewModel() {
             topCategories = expenseByCategory,
             transactionCount = count,
             recentTransactions = _uiState.value.recentTransactions,
-            aiTip = generateTip(monthlyExpense, monthlyIncome, count, expenseByCategory)
+            aiTip = displayTip
         )
     }
 
@@ -258,14 +316,27 @@ class HomeViewModel : ViewModel() {
             hasData = hasExpenseData
         )
 
-        val cacheKey = if (hasExpenseData) trendInput.cacheKey() else null
-        val dataChanged = hasExpenseData && cacheKey != lastTrendTipCacheKey
-        if (dataChanged) lastTrendTipCacheKey = cacheKey
+        val todayKey = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+        val trendDailyKey = "trend_${range.name.lowercase()}_$todayKey"
+        val hasCachedTip = trendDailyKey in trendTipCache
+
+        if (hasExpenseData && !hasCachedTip && trendDailyKey !in trendTipInFlightKeys) {
+            trendTipInFlightKeys.add(trendDailyKey)
+            trendTipJob?.cancel()
+            trendTipJob = viewModelScope.launch {
+                val aiTip = trendTipRepository.generateTip(trendInput)
+                trendTipCache[trendDailyKey] = aiTip
+                if (_trendState.value.range == range) {
+                    _trendState.value = _trendState.value.copy(trendTip = aiTip)
+                }
+                trendTipInFlightKeys.remove(trendDailyKey)
+            }
+        }
 
         val tipToShow = when {
-            !hasExpenseData -> "还没有足够数据，先轻松记一笔吧。"
-            dataChanged -> trendTipRepository.generateLocalTip(trendInput)
-            else -> _trendState.value.trendTip
+            !hasExpenseData -> "数据还不多，先继续记录。"
+            hasCachedTip -> trendTipCache[trendDailyKey]!!
+            else -> trendTipRepository.generateLocalTip(trendInput)
         }
 
         _trendState.value = currentState.copy(
@@ -280,17 +351,8 @@ class HomeViewModel : ViewModel() {
             isLoading = false,
             errorMessage = null,
             trendTip = tipToShow,
-            isTrendTipLoading = dataChanged
+            isTrendTipLoading = false
         )
-
-        // Trigger AI in background if data changed
-        if (dataChanged) {
-            trendTipJob?.cancel()
-            trendTipJob = viewModelScope.launch {
-                val aiTip = trendTipRepository.generateTip(trendInput)
-                _trendState.value = _trendState.value.copy(trendTip = aiTip, isTrendTipLoading = false)
-            }
-        }
     }
 
     private fun safeAmount(value: Double): Double {
@@ -301,14 +363,28 @@ class HomeViewModel : ViewModel() {
         return if (b == 0.0 || a.isNaN() || a.isInfinite()) 0.0 else a / b
     }
 
-    private fun generateTip(expense: Double, income: Double, count: Int, topCategories: List<Pair<String, Double>>): String {
-        if (count == 0) return "今天也可以轻松记一笔。"
-        if (expense == 0.0) return "这个月还没有支出记录哦"
-        val topCat = topCategories.firstOrNull()?.first
-        if (topCat == "餐饮") return "这个月餐饮有点活跃，可以留意一下外卖和咖啡。"
-        if (topCat == "购物") return "这个月购物记录比较多，可以看看哪些是真正需要的。"
-        if (expense < 500) return "这个月消费节奏还不错。"
-        return "这个月已经支出 ${expense.toLong()} 元了，可以看看都花在哪了。"
+    private fun computeFrequentSmallExpenses(expenses: List<TransactionEntity>): List<SmallExpenseSummary> {
+        return expenses
+            .filter { it.amount > 0 && it.amount <= 50 }
+            .groupBy { (it.merchantOrItem ?: it.note).ifBlank { "其他" } }
+            .map { (name, list) ->
+                SmallExpenseSummary(
+                    name = name,
+                    count = list.size,
+                    amount = safeAmount(list.sumOf { it.amount })
+                )
+            }
+            .filter { it.count >= 3 }
+            .sortedByDescending { it.count }
+            .take(3)
+    }
+
+    private fun computeLargestExpense(expenses: List<TransactionEntity>): Pair<String, Double> {
+        val top = expenses.maxByOrNull { it.amount }
+        if (top != null) {
+            return (top.merchantOrItem ?: top.category) to top.amount
+        }
+        return "" to 0.0
     }
 
     private fun computeTrendDirection(points: List<DailyExpensePoint>): String {
@@ -326,12 +402,10 @@ class HomeViewModel : ViewModel() {
         super.onCleared()
         trendTipJob?.cancel()
         trendTipRepository.cleanup()
-    }
-
-    companion object {
-        fun getDefaultTip(expense: Double): String {
-            return if (expense == 0.0) "今天也可以轻松记一笔。"
-            else "今天也要好好记账哦~"
-        }
+        homeTipJob?.cancel()
+        homeTipRepository.cleanup()
+        homeTipInFlightKeys.clear()
+        trendTipInFlightKeys.clear()
+        trendTipCache.clear()
     }
 }
