@@ -18,6 +18,7 @@ data class SettingsUiState(
     val modelName: String = "deepseek-v4-flash",
     val useRealAI: Boolean = false,
     val useWarmReminder: Boolean = true,
+    val monthlyBudget: Double = -1.0,
     val exportMessage: String? = null,
     val errorMessage: String? = null,
     val isExporting: Boolean = false,
@@ -49,7 +50,8 @@ class SettingsViewModel : ViewModel() {
                 apiKey = settings.apiKey,
                 modelName = settings.modelName,
                 useRealAI = settings.useRealAI,
-                useWarmReminder = settings.useWarmReminder
+                useWarmReminder = settings.useWarmReminder,
+                monthlyBudget = settings.monthlyBudget
             )
         }
     }
@@ -177,6 +179,16 @@ class SettingsViewModel : ViewModel() {
                     errorMessage = "清空失败，请稍后再试。"
                 )
             }
+        }
+    }
+
+    fun saveMonthlyBudget(budget: Double) {
+        viewModelScope.launch {
+            settingsRepository.saveMonthlyBudget(budget)
+            _uiState.value = _uiState.value.copy(
+                monthlyBudget = budget,
+                exportMessage = if (budget > 0) "本月预算已设置" else "本月预算已清除"
+            )
         }
     }
 

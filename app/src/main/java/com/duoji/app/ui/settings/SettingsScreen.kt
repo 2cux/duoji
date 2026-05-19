@@ -45,6 +45,7 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showClearDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
+    var showBudgetDialog by remember { mutableStateOf(false) }
     var showApiKey by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val appVersion = remember {
@@ -195,6 +196,21 @@ fun SettingsScreen(
             },
             containerColor = WarmCard,
             shape = RoundedCornerShape(24.dp)
+        )
+    }
+
+    if (showBudgetDialog) {
+        BudgetDialog(
+            currentBudget = uiState.monthlyBudget,
+            onDismiss = { showBudgetDialog = false },
+            onSave = { budget ->
+                showBudgetDialog = false
+                viewModel.saveMonthlyBudget(budget)
+            },
+            onClear = {
+                showBudgetDialog = false
+                viewModel.saveMonthlyBudget(-1.0)
+            }
         )
     }
 
@@ -462,12 +478,33 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // Preferences section
+            // Budget section
             AnimatedSection(delayMillis = 240, animDuration = 400) {
+                SettingsSectionHeader("预算管理")
+            }
+            Spacer(Modifier.height(8.dp))
+            AnimatedSection(delayMillis = 260, animDuration = 400) {
+                val hasBudget = uiState.monthlyBudget > 0
+                SettingsActionCard(
+                    icon = Icons.Rounded.Flag,
+                    iconTint = WarmPrimary,
+                    iconBg = WarningLight,
+                    title = "本月预算",
+                    subtitle = if (hasBudget) "本月预算 ¥${formatBudgetAmount(uiState.monthlyBudget)}"
+                               else "设置这个月计划可花金额",
+                    enabled = true,
+                    onClick = { showBudgetDialog = true }
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // Preferences section
+            AnimatedSection(delayMillis = 320, animDuration = 400) {
                 SettingsSectionHeader("使用偏好")
             }
             Spacer(Modifier.height(8.dp))
-            AnimatedSection(delayMillis = 280, animDuration = 400) {
+            AnimatedSection(delayMillis = 360, animDuration = 400) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
@@ -512,11 +549,11 @@ fun SettingsScreen(
             Spacer(Modifier.height(24.dp))
 
             // About section
-            AnimatedSection(delayMillis = 320, animDuration = 400) {
+            AnimatedSection(delayMillis = 400, animDuration = 400) {
                 SettingsSectionHeader("关于多记")
             }
             Spacer(Modifier.height(8.dp))
-            AnimatedSection(delayMillis = 360, animDuration = 400) {
+            AnimatedSection(delayMillis = 440, animDuration = 400) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
@@ -672,3 +709,111 @@ private fun settingsFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedLabelColor = WarmPrimary,
     unfocusedLabelColor = WarmTextSecondary
 )
+
+@Composable
+private fun BudgetDialog(
+    currentBudget: Double,
+    onDismiss: () -> Unit,
+    onSave: (Double) -> Unit,
+    onClear: () -> Unit
+) {
+    var inputText by remember { mutableStateOf(
+        if (currentBudget > 0) String.format("%.2f", currentBudget) else ""
+    ) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("设置本月预算", style = MaterialTheme.typography.titleLarge)
+        },
+        text = {
+            Column {
+                Text(
+                    "输入这个月计划可花的金额：",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = WarmTextSecondary
+                )
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = inputText,
+                    onValueChange = {
+                        inputText = it
+                        errorMsg = null
+                    },
+                    label = { Text("预算金额") },
+                    placeholder = { Text("例如 3000") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = settingsFieldColors(),
+                    textStyle = MaterialTheme.typography.bodyMedium,
+                    prefix = {
+                        Text("¥", style = MaterialTheme.typography.bodyMedium, color = WarmTextPrimary)
+                    }
+                )
+                if (errorMsg != null) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = errorMsg!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = WarmAccent
+                    )
+                }
+                if (currentBudget > 0) {
+                    Spacer(Modifier.height(12.dp))
+                    TextButton(
+                        onClick = onClear,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Icon(
+                            Icons.Rounded.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text("清除预算", color = WarmAccent)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val trimmed = inputText.trim()
+                    if (trimmed.isEmpty()) {
+                        errorMsg = "请输入有效预算金额"
+                        return@Button
+                    }
+                    val amount = trimmed.toDoubleOrNull()
+                    if (amount == null || amount <= 0) {
+                        errorMsg = "请输入有效预算金额"
+                    } else {
+                        onSave(amount)
+                    }
+                },
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = WarmPrimary)
+            ) {
+                Text("保存")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消", color = WarmTextSecondary)
+            }
+        },
+        containerColor = WarmCard,
+        shape = RoundedCornerShape(24.dp)
+    )
+}
+
+private fun formatBudgetAmount(amount: Double): String {
+    if (amount.isNaN() || amount.isInfinite()) return "0"
+    return if (amount == amount.toLong().toDouble()) {
+        amount.toLong().toString()
+    } else {
+        String.format("%.2f", amount)
+    }
+}

@@ -882,13 +882,13 @@ private fun HeroCard(state: HomeUiState) {
     ) {
         Column {
             Text(
-                text = "本月支出",
+                text = "今日支出",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.9f)
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "¥ ${formatAmount(state.monthlyExpense)}",
+                text = "¥ ${formatAmount(state.todayExpense)}",
                 style = MaterialTheme.typography.displayLarge,
                 color = Color.White,
                 fontWeight = FontWeight.Bold
@@ -899,15 +899,23 @@ private fun HeroCard(state: HomeUiState) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 StatItem(
-                    label = "今日支出",
-                    value = "¥ ${formatAmount(state.todayExpense)}",
+                    label = "本月已花",
+                    value = "¥ ${formatAmount(state.monthlyExpense)}",
                     color = Color.White.copy(alpha = 0.9f)
                 )
-                StatItem(
-                    label = if (state.balance >= 0) "本月结余" else "超出",
-                    value = "¥ ${formatAmount(kotlin.math.abs(state.balance))}",
-                    color = Color.White.copy(alpha = 0.9f)
-                )
+                if (state.monthlyBudget > 0) {
+                    StatItem(
+                        label = if (state.remainingBudget >= 0) "剩余预算" else "这个月花得有点快",
+                        value = "¥ ${formatAmount(kotlin.math.abs(state.remainingBudget))}",
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
+                } else {
+                    StatItem(
+                        label = "日均支出",
+                        value = "¥ ${formatAmount(state.averageDailyExpense)}",
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
+                }
             }
         }
     }

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.duoji.app.DuoJiApplication
 import com.duoji.app.data.local.entity.TransactionEntity
 import com.duoji.app.data.repository.TransactionRepository
+import com.duoji.app.data.settings.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,6 +45,9 @@ data class HomeUiState(
     val monthlyIncome: Double = 0.0,
     val todayExpense: Double = 0.0,
     val balance: Double = 0.0,
+    val monthlyBudget: Double = -1.0,
+    val remainingBudget: Double = 0.0,
+    val averageDailyExpense: Double = 0.0,
     val topCategories: List<Pair<String, Double>> = emptyList(),
     val transactionCount: Int = 0,
     val recentTransactions: List<TransactionEntity> = emptyList(),
@@ -54,6 +58,9 @@ class HomeViewModel : ViewModel() {
 
     private val repository: TransactionRepository =
         DuoJiApplication.instance.container.transactionRepository
+
+    private val settingsRepository: SettingsRepository =
+        DuoJiApplication.instance.container.settingsRepository
 
     private val _uiState = MutableStateFlow(HomeUiState(aiTip = getDefaultTip(0.0)))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -75,6 +82,20 @@ class HomeViewModel : ViewModel() {
         viewModelScope.launch {
             repository.observeAllTransactions().collect { transactions ->
                 computeTrendData(transactions)
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.settingsFlow.collect { settings ->
+                val budget = settings.monthlyBudget
+                val expense = _uiState.value.monthlyExpense
+                val daysPassed = LocalDate.now().dayOfMonth
+                val avgDaily = safeDiv(expense, daysPassed.toDouble())
+                val remaining = if (budget > 0) safeAmount(budget - expense) else 0.0
+                _uiState.value = _uiState.value.copy(
+                    monthlyBudget = budget,
+                    remainingBudget = remaining,
+                    averageDailyExpense = avgDaily
+                )
             }
         }
     }
@@ -115,11 +136,19 @@ class HomeViewModel : ViewModel() {
 
         val count = transactions.size
 
+        val currentBudget = _uiState.value.monthlyBudget
+        val daysPassed = now.dayOfMonth
+        val avgDaily = safeDiv(monthlyExpense, daysPassed.toDouble())
+        val remaining = if (currentBudget > 0) safeAmount(currentBudget - monthlyExpense) else 0.0
+
         _uiState.value = HomeUiState(
             monthlyExpense = monthlyExpense,
             monthlyIncome = monthlyIncome,
             todayExpense = todayExpense,
             balance = monthlyIncome - monthlyExpense,
+            monthlyBudget = currentBudget,
+            remainingBudget = remaining,
+            averageDailyExpense = avgDaily,
             topCategories = expenseByCategory,
             transactionCount = count,
             recentTransactions = _uiState.value.recentTransactions,
