@@ -62,9 +62,9 @@ class HomeTipRepository(
     fun generateLocalTip(input: HomeTipInput): String {
         if (!input.hasData) return "先记一笔，慢慢看清消费。"
 
-        // 预算少
-        if (input.budgetLeft != null && input.budgetLeft < input.monthExpense * 0.2) {
-            return "预算余量不多，今天轻一点。"
+        // 预算还有余量
+        if (input.budgetLeft != null && input.budgetLeft > 0) {
+            return "预算还有余量，保持当前节奏。"
         }
 
         // TOP 分类明显最高（比第二名高 50% 以上）
@@ -72,27 +72,16 @@ class HomeTipRepository(
             val top = input.topCategories[0]
             val second = input.topCategories[1]
             if (top.second > second.second * 1.5) {
-                return "${top.first}花得较多，可稍微留意。"
+                return "本月${top.first}占比较高，可以稍微留意。"
             }
         }
         if (input.topCategories.size == 1) {
             val top = input.topCategories[0]
-            return "${top.first}花得较多，可稍微留意。"
-        }
-
-        // 高频小额消费明显
-        if (input.frequentSmallExpenses.isNotEmpty()) {
-            val e = input.frequentSmallExpenses[0]
-            return "${e.name}次数偏多，可少买一两次。"
-        }
-
-        // 最大单笔支出较高（超过日均 3 倍且大于 100 元）
-        if (input.largestExpenseAmount > input.dailyAverage * 3 && input.largestExpenseAmount > 100) {
-            return "${input.largestExpenseName}金额较高，记得确认。"
+            return "本月${top.first}占比较高，可以稍微留意。"
         }
 
         // 默认
-        return "消费结构还平稳，继续记录。"
+        return "消费节奏还比较平稳。"
     }
 
     suspend fun generateTip(input: HomeTipInput): String {
@@ -129,7 +118,7 @@ class HomeTipRepository(
             messages = listOf(
                 AIMessage(
                     role = "system",
-                    content = "你是记账 App 的首页消费提醒助手。请根据消费摘要输出一句具体账单分析和建议，15-30 个中文字符，最多不超过 40 字。关注分类、具体项目、频率、预算余量。不要写趋势判断。不要 Markdown、标题、列表。"
+                    content = "你是记账 App 的轻量消费提醒助手。请根据消费分类摘要输出一句温和提醒，15-30 个中文字符，最多 40 字。只分析类别，如餐饮、购物、交通等，不要提具体商品、商户或单笔账单。可以只做中性观察，不一定给建议。不要说教，不要制造焦虑，不要 Markdown。"
                 ),
                 AIMessage(role = "user", content = prompt)
             ),
@@ -158,36 +147,37 @@ class HomeTipRepository(
             append("今日支出：${input.todayExpense.toLong()}。")
             append("日均支出：${input.dailyAverage.toLong()}。")
             append("TOP分类：${input.topCategories.joinToString("、") { "${it.first}¥${it.second.toLong()}" }}。")
-            if (input.frequentSmallExpenses.isNotEmpty()) {
-                val freqStr = input.frequentSmallExpenses.joinToString("、") {
-                    "${it.name}x${it.count}次/¥${it.amount.toLong()}"
-                }
-                append("高频小额消费：$freqStr。")
-            }
-            if (input.largestExpenseAmount > 0) {
-                append("最大单笔支出：${input.largestExpenseName}¥${input.largestExpenseAmount.toLong()}。")
-            }
             if (input.budgetLeft != null) {
                 append("预算剩余：${input.budgetLeft.toLong()}。")
             }
         }
     }
 
+    private val sensitiveWords = listOf(
+        "少买", "不要再", "控制", "花太多", "不必要",
+        "异常", "超支严重", "必须", "应该", "警告"
+    )
+
     private fun cleanTip(text: String): String {
-        return text
-            .replace(Regex("^[#*\\->]+\\s*", RegexOption.MULTILINE), "")
+        val cleaned = text
+            .replace(Regex("^[#*\->]+\s*", RegexOption.MULTILINE), "")
             .replace("**", "")
             .replace("`", "")
-            .replace(Regex("```[\\s\\S]*?```"), "")
-            .replace(Regex("\\n{2,}"), "")
+            .replace(Regex("```[\s\S]*?```"), "")
+            .replace(Regex("\n{2,}"), "")
             .trim()
             .lines()
             .filter { it.isNotBlank() }
             .take(2)
             .joinToString("")
             .take(40)
-    }
 
+        // Sensitive word check
+        if (sensitiveWords.any { cleaned.contains(it) }) {
+            return ""
+        }
+        return cleaned
+    }
     fun cleanup() {
         client.close()
     }

@@ -246,6 +246,7 @@ fun BillListScreen(
                         group = group,
                         onItemClick = onNavigateToEdit,
                         onItemLongClick = { viewModel.enterSelectionMode(it) },
+                        onItemToggleSelection = { viewModel.toggleSelection(it) },
                         isSelectionMode = uiState.isSelectionMode,
                         selectedIds = uiState.selectedIds
                     )
@@ -355,6 +356,7 @@ private fun DateGroup(
     group: GroupedTransaction,
     onItemClick: (String) -> Unit,
     onItemLongClick: (String) -> Unit,
+    onItemToggleSelection: (String) -> Unit,
     isSelectionMode: Boolean,
     selectedIds: Set<String>
 ) {
@@ -411,6 +413,7 @@ private fun DateGroup(
                         TransactionItem(
                             transaction = tx,
                             onClick = { onItemClick(tx.id) },
+                            onToggleSelection = { onItemToggleSelection(tx.id) },
                             onLongClick = { onItemLongClick(tx.id) },
                             isSelectionMode = isSelectionMode,
                             isSelected = tx.id in selectedIds
@@ -437,6 +440,7 @@ private fun TransactionItem(
     transaction: TransactionEntity,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onToggleSelection: () -> Unit,
     isSelectionMode: Boolean,
     isSelected: Boolean
 ) {
@@ -451,7 +455,7 @@ private fun TransactionItem(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = {
-                    if (isSelectionMode) onLongClick()
+                    if (isSelectionMode) onToggleSelection()
                     else onClick()
                 },
                 onLongClick = {

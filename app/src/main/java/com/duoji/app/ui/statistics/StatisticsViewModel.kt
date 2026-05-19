@@ -192,7 +192,8 @@ class StatisticsViewModel : ViewModel() {
             .replace("`", "")                                                // inline `code`
             .replace(Regex("^>\\s*", RegexOption.MULTILINE), "")             // > blockquotes
             .replace(Regex("^[-\\*_]{3,}\\s*$", RegexOption.MULTILINE), "") // ---/***/___ HRs
-            .replace(Regex("^[*\\-]\\s+", RegexOption.MULTILINE), "")       // - / * bullets
+            .replace(Regex("^[*\\-]\\s+", RegexOption.MULTILINE), "• ")       // - / * bullets → bullet
+            .replace(Regex("^\d+\.\s+", RegexOption.MULTILINE), "• ")     // 1. 2. numbered lists → bullet
             .replace(Regex("^\\|.*\\|\\s*$", RegexOption.MULTILINE), "")    // | table rows |
             .replace(Regex("\\n{3,}"), "\n\n")                               // normalize excessive newlines
             .trim()

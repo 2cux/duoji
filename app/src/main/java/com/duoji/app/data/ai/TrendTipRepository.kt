@@ -50,17 +50,15 @@ class TrendTipRepository(
     }
 
     fun generateLocalTip(input: TrendSummaryInput): String {
-        if (!input.hasData) return "数据还不多，先继续记录。"
+        if (!input.hasData) return "先继续记录，慢慢看清趋势。"
 
-        if (input.trendDirection == "上升") return "近几天花得略快，注意节奏。"
+        when (input.trendDirection) {
+            "上升" -> return "近几天支出略有上升，留意节奏。"
+            "下降" -> return "近几天支出放缓，节奏不错。"
+            "平稳" -> return "本周消费节奏比较平稳。"
+        }
 
-        if (input.trendDirection == "下降") return "最近支出下降，节奏不错。"
-
-        if (input.topDay.isNotBlank()) return "有一天支出偏高，可回看明细。"
-
-        if (input.trendDirection == "平稳") return "消费节奏平稳，继续保持。"
-
-        return "趋势整体平稳，继续观察。"
+        return "消费节奏还比较平稳。"
     }
 
     suspend fun generateTip(input: TrendSummaryInput): String {
@@ -97,7 +95,7 @@ class TrendTipRepository(
             messages = listOf(
                 AIMessage(
                     role = "system",
-                    content = "你是记账 App 的趋势提醒助手。请根据趋势摘要输出一句趋势分析和建议，15-30 个中文字符，最多不超过 40 字。关注消费上升、下降、平稳、某天偏高。不要写具体账单分类分析。不要 Markdown、标题、列表。"
+                    content = "你是记账 App 的轻量趋势提醒助手。请根据支出趋势摘要输出一句温和提醒，15-30 个中文字符，最多 40 字。只描述整体走势，如上升、下降、平稳、波动，不要提具体商品、商户或单笔账单。可以只做中性观察，不一定给建议。不要说教，不要制造焦虑，不要 Markdown。"
                 ),
                 AIMessage(role = "user", content = prompt)
             ),
@@ -125,26 +123,34 @@ class TrendTipRepository(
             append("范围：${input.range}。")
             append("总支出：¥${input.totalExpense.toLong()}。")
             append("日均：¥${input.averageExpense.toLong()}。")
-            if (input.topDay.isNotBlank()) {
-                append("最高日：${input.topDay}。")
-            }
             append("趋势：${input.trendDirection}。")
         }
     }
 
+    private val sensitiveWords = listOf(
+        "少买", "不要再", "控制", "花太多", "不必要",
+        "异常", "超支严重", "必须", "应该", "警告"
+    )
+
     private fun cleanTip(text: String): String {
-        return text
-            .replace(Regex("^[#*\\->]+\\s*", RegexOption.MULTILINE), "")
+        val cleaned = text
+            .replace(Regex("^[#*\->]+\s*", RegexOption.MULTILINE), "")
             .replace("**", "")
             .replace("`", "")
-            .replace(Regex("```[\\s\\S]*?```"), "")
-            .replace(Regex("\\n{2,}"), "")
+            .replace(Regex("```[\s\S]*?```"), "")
+            .replace(Regex("\n{2,}"), "")
             .trim()
             .lines()
             .filter { it.isNotBlank() }
             .firstOrNull()
             .orEmpty()
             .take(40)
+
+        // Sensitive word check
+        if (sensitiveWords.any { cleaned.contains(it) }) {
+            return ""
+        }
+        return cleaned
     }
 
     fun cleanup() {
