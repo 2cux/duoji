@@ -431,6 +431,7 @@ private fun DateGroup(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TransactionItem(
     transaction: TransactionEntity,
