@@ -78,6 +78,14 @@ class RecordViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(error = null)
     }
 
+    fun resetParseState() {
+        _uiState.value = _uiState.value.copy(
+            parsedSuccessfully = false,
+            usingLocalFallback = false,
+            localFallbackReason = null
+        )
+    }
+
     override fun onCleared() {
         super.onCleared()
         repository.cleanup()

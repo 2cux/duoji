@@ -155,11 +155,12 @@ class StatisticsViewModel : ViewModel() {
             try {
                 Log.d(TAG, "generateMonthlyAdvice: starting...")
                 val advice = adviceRepository.generateAdvice(stats)
-                Log.d(TAG, "generateMonthlyAdvice: success, length=${advice.length}")
+                val cleaned = sanitizeMarkdown(advice)
+                Log.d(TAG, "generateMonthlyAdvice: success, length=${advice.length}, cleaned=${cleaned.length}")
                 _uiState.value = _uiState.value.copy(
                     adviceState = MonthlyAdviceState(
                         isLoading = false,
-                        content = advice
+                        content = cleaned
                     )
                 )
             } catch (e: CancellationException) {
@@ -181,6 +182,20 @@ class StatisticsViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(
             adviceState = current.copy(errorMessage = null)
         )
+    }
+
+    private fun sanitizeMarkdown(text: String): String {
+        return text
+            .replace(Regex("^#{1,6}\\s*", RegexOption.MULTILINE), "")        // # headers
+            .replace("**", "")                                               // **bold**
+            .replace(Regex("```[\\s\\S]*?```"), "")                          // ```code blocks```
+            .replace("`", "")                                                // inline `code`
+            .replace(Regex("^>\\s*", RegexOption.MULTILINE), "")             // > blockquotes
+            .replace(Regex("^[-\\*_]{3,}\\s*$", RegexOption.MULTILINE), "") // ---/***/___ HRs
+            .replace(Regex("^[*\\-]\\s+", RegexOption.MULTILINE), "")       // - / * bullets
+            .replace(Regex("^\\|.*\\|\\s*$", RegexOption.MULTILINE), "")    // | table rows |
+            .replace(Regex("\\n{3,}"), "\n\n")                               // normalize excessive newlines
+            .trim()
     }
 
     override fun onCleared() {

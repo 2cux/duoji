@@ -1,5 +1,6 @@
 package com.duoji.app.ui.settings
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.duoji.app.DuoJiApplication
@@ -123,6 +124,7 @@ class SettingsViewModel : ViewModel() {
                     }
                 )
             } catch (e: Exception) {
+                    Log.e("SettingsViewModel", "exportCsv failed: ${e::class.simpleName} - ${e.message}")
                 _uiState.value = _uiState.value.copy(
                     isExporting = false,
                     errorMessage = "导出失败，请稍后再试。"
@@ -156,6 +158,7 @@ class SettingsViewModel : ViewModel() {
                     }
                 )
             } catch (e: Exception) {
+                    Log.e("SettingsViewModel", "exportJson failed: ${e::class.simpleName} - ${e.message}")
                 _uiState.value = _uiState.value.copy(
                     isExporting = false,
                     errorMessage = "导出失败，请稍后再试。"

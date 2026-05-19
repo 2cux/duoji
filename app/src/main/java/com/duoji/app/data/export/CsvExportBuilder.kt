@@ -1,6 +1,7 @@
 package com.duoji.app.data.export
 
 import com.duoji.app.data.local.entity.TransactionEntity
+import com.duoji.app.data.util.DateUtils
 
 object CsvExportBuilder {
 
@@ -24,12 +25,12 @@ object CsvExportBuilder {
                     tx.subcategory ?: "",
                     tx.note,
                     tx.merchantOrItem ?: "",
-                    tx.occurredAt.toString(),
+                    DateUtils.formatDateTime(tx.occurredAt),
                     tx.source,
                     tx.confidence.toString(),
                     tx.needUserConfirm.toString(),
-                    tx.createdAt.toString(),
-                    tx.updatedAt.toString()
+                    DateUtils.formatDateTime(tx.createdAt),
+                    DateUtils.formatDateTime(tx.updatedAt)
                 ).joinToString(",") { escapeCsv(it) }
             )
         }

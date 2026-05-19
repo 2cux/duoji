@@ -638,12 +638,44 @@ private fun AiMonthlyAdviceCard(
                 }
                 adviceState.content != null -> {
                     Log.d(TAG, "AiMonthlyAdviceCard: content, length=${adviceState.content.length}")
-                    Text(
-                        text = adviceState.content,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = WarmTextPrimary,
-                        lineHeight = 22.sp
-                    )
+                    val segments = remember(adviceState.content) {
+                        adviceState.content!!.split("\n")
+                            .map { it.trim() }
+                            .filter { it.isNotBlank() }
+                    }
+                    segments.forEachIndexed { index, segment ->
+                        if (index > 0) Spacer(Modifier.height(10.dp))
+                        if (index == 0) {
+                            Text(
+                                text = segment,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = WarmTextPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                                lineHeight = 22.sp
+                            )
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(top = 8.dp)
+                                        .size(6.dp)
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(WarmPrimary)
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    text = segment,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = WarmTextPrimary,
+                                    lineHeight = 22.sp,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
                 }
                 adviceState.errorMessage != null -> {
                     Log.d(TAG, "AiMonthlyAdviceCard: error=${adviceState.errorMessage}")

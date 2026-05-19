@@ -31,7 +31,12 @@ data class BillListUiState(
     val monthBalance: Double = 0.0,
     val isLoading: Boolean = true,
     val isEmpty: Boolean = false,
-    val refreshTrigger: Long = 0L
+    val refreshTrigger: Long = 0L,
+    val isSelectionMode: Boolean = false,
+    val selectedIds: Set<String> = emptySet(),
+    val isDeleting: Boolean = false,
+    val batchDeleteCount: Int? = null,
+    val batchDeleteError: String? = null
 )
 
 class BillListViewModel : ViewModel() {
@@ -50,6 +55,7 @@ class BillListViewModel : ViewModel() {
 
     fun loadMonth(year: Int, month: Int) {
         observeJob?.cancel()
+        exitSelectionMode()
         _uiState.value = _uiState.value.copy(
             selectedYear = year,
             selectedMonth = month,
@@ -103,10 +109,53 @@ class BillListViewModel : ViewModel() {
         loadMonth(y, m)
     }
 
-    fun deleteTransaction(id: String) {
+    fun enterSelectionMode(id: String) {
+        _uiState.value = _uiState.value.copy(
+            isSelectionMode = true,
+            selectedIds = setOf(id)
+        )
+    }
+
+    fun toggleSelection(id: String) {
+        val current = _uiState.value.selectedIds
+        val updated = if (id in current) current - id else current + id
+        _uiState.value = _uiState.value.copy(selectedIds = updated)
+    }
+
+    fun exitSelectionMode() {
+        _uiState.value = _uiState.value.copy(
+            isSelectionMode = false,
+            selectedIds = emptySet()
+        )
+    }
+
+    fun deleteSelected() {
+        val ids = _uiState.value.selectedIds.toList()
+        if (ids.isEmpty()) return
+        _uiState.value = _uiState.value.copy(isDeleting = true)
         viewModelScope.launch {
-            repository.deleteTransactionById(id)
+            try {
+                repository.deleteTransactionsByIds(ids)
+                _uiState.value = _uiState.value.copy(
+                    isDeleting = false,
+                    isSelectionMode = false,
+                    selectedIds = emptySet(),
+                    batchDeleteCount = ids.size
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isDeleting = false,
+                    batchDeleteError = "删除失败，请重试"
+                )
+            }
         }
+    }
+
+    fun clearBatchMessages() {
+        _uiState.value = _uiState.value.copy(
+            batchDeleteCount = null,
+            batchDeleteError = null
+        )
     }
 
     fun refresh() {

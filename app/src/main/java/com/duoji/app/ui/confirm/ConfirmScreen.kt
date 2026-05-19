@@ -110,6 +110,7 @@ fun ConfirmScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
+                    ParseResultStore.clear()
                     showDiscardDialog = false
                     onNavigateBack()
                 }) {
@@ -369,16 +370,20 @@ fun ConfirmScreen(
 
                 // Secondary discard button
                 OutlinedButton(
-                    onClick = { onNavigateBack() },
+                    onClick = {
+                        ParseResultStore.clear()
+                        onNavigateBack()
+                    },
                     enabled = !uiState.isSaving,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
                     shape = RoundedCornerShape(18.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = WarmTextSecondary
+                        contentColor = WarmTextSecondary,
+                        disabledContentColor = WarmTextSecondary.copy(alpha = 0.35f)
                     ),
-                    border = BorderStroke(1.dp, WarmSecondary)
+                    border = BorderStroke(1.dp, WarmTextSecondary.copy(alpha = 0.5f))
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
