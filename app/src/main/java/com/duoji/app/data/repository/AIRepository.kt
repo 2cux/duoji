@@ -15,6 +15,7 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 import java.net.ConnectException
@@ -45,8 +46,11 @@ class AIRepository(
             json(this@AIRepository.json)
         }
         install(HttpTimeout) {
-            requestTimeoutMillis = 30_000
+            requestTimeoutMillis = 35_000
             connectTimeoutMillis = 10_000
+            // 显式设置 socketTimeout，否则 OkHttp 引擎使用默认 10s readTimeout
+            // 导致长文本/复杂 AI 响应频繁超时
+            socketTimeoutMillis = 35_000
         }
     }
 
@@ -94,18 +98,52 @@ class AIRepository(
             return parseLocal(input).map { Companion.applyInheritance(it) }
         }
 
-        Log.d("AIRepository", "parse: 远程 AI 解析, model=${settings.modelName}, inputLength=${input.length}")
-        val deepSeekResult = parseWithDeepSeek(input, settings.apiBaseUrl, settings.apiKey, settings.modelName)
+        Log.d("AIRepository", "parse: 远程 AI 解析(第1次), model=${settings.modelName}, inputLength=${input.length}")
+        val startTime = System.currentTimeMillis()
+        var deepSeekResult = parseWithDeepSeek(
+            input, settings.apiBaseUrl, settings.apiKey, settings.modelName, isRetry = false
+        )
+        val elapsed = System.currentTimeMillis() - startTime
+        Log.d("AIRepository", "parse: 第1次请求耗时 ${elapsed}ms, success=${deepSeekResult.isSuccess}")
+
         if (deepSeekResult.isSuccess) {
             Log.d("AIRepository", "parse: 远程 AI 解析成功")
             return deepSeekResult.map { Companion.applyInheritance(it) }
         }
 
-        val exception = deepSeekResult.exceptionOrNull()
-        val errorMsg = exception?.message ?: "未知错误"
-        val fallbackReason = buildFallbackReason(errorMsg)
+        val firstError = deepSeekResult.exceptionOrNull()
+        val firstErrorMsg = firstError?.message ?: ""
+
+        // 仅对超时、网络抖动、JSON 格式异常做 1 次重试
+        val shouldRetry = firstErrorMsg.contains("超时") || firstErrorMsg.contains("timeout") ||
+                firstErrorMsg.contains("timed out") || firstErrorMsg.contains("格式异常") ||
+                firstErrorMsg.contains("Serialization") || firstErrorMsg.contains("JSON") ||
+                firstErrorMsg.contains("connect") || firstErrorMsg.contains("refused") ||
+                firstErrorMsg.contains("econnrefused") || firstErrorMsg.contains("UnknownHost") ||
+                firstErrorMsg.contains("网络连接")
+
+        if (shouldRetry) {
+            Log.d("AIRepository", "parse: 第1次失败(${firstErrorMsg.take(80)})，准备重试(第2次)")
+            delay(500)
+            val retryStart = System.currentTimeMillis()
+            deepSeekResult = parseWithDeepSeek(
+                input, settings.apiBaseUrl, settings.apiKey, settings.modelName, isRetry = true
+            )
+            val retryElapsed = System.currentTimeMillis() - retryStart
+            Log.d("AIRepository", "parse: 重试请求耗时 ${retryElapsed}ms, success=${deepSeekResult.isSuccess}")
+
+            if (deepSeekResult.isSuccess) {
+                Log.d("AIRepository", "parse: 重试成功")
+                return deepSeekResult.map { Companion.applyInheritance(it) }
+            }
+        }
+
+        // 远程 AI 两次都失败（或不应重试）
+        val finalException = deepSeekResult.exceptionOrNull() ?: firstError
+        val finalErrorMsg = finalException?.message ?: firstErrorMsg
+        val fallbackReason = buildFallbackReason(finalErrorMsg)
         lastFallbackReason = fallbackReason
-        Log.w("AIRepository", "parse: 远程 AI 失败（$fallbackReason），降级到本地解析")
+        Log.w("AIRepository", "parse: 远程 AI 失败（$fallbackReason），降级本地解析")
         Log.d("AIRepository", "parse: 降级本地解析")
         return parseLocal(input).map { Companion.applyInheritance(it) }
     }
@@ -114,6 +152,12 @@ class AIRepository(
      * Map an error message from parseWithDeepSeek to a user-facing fallback reason shown in ConfirmScreen.
      */
     private fun buildFallbackReason(errorMsg: String): String = when {
+        // 模型名称错误检测：API 返回 model not found / does not exist / not supported
+        (errorMsg.contains("model", ignoreCase = true) &&
+                (errorMsg.contains("not found", ignoreCase = true) ||
+                        errorMsg.contains("does not exist", ignoreCase = true) ||
+                        errorMsg.contains("not supported", ignoreCase = true) ||
+                        errorMsg.contains("not_found", ignoreCase = true))) -> "模型名称可能不正确，请检查设置页的模型名称，已使用本地解析"
         errorMsg.contains("API Key") || errorMsg.contains("api_key") ||
         errorMsg.contains("authentication") || errorMsg.contains("Unauthorized") ||
         errorMsg.contains("401") || errorMsg.contains("403") -> "API Key 可能无效，已使用本地解析"
@@ -133,13 +177,16 @@ class AIRepository(
         input: String,
         apiBaseUrl: String,
         apiKey: String,
-        modelName: String
+        modelName: String,
+        isRetry: Boolean = false
     ): Result<List<TransactionDraft>> {
         return try {
             val endpoint = apiBaseUrl.trimEnd('/') + "/chat/completions"
-            Log.d("AIRepository", "parseWithDeepSeek: POST $endpoint, inputLength=${input.length}, model=$modelName")
+            val inputPreview = if (input.length > 30) input.take(30) + "..." else input
+            Log.d("AIRepository", "parseWithDeepSeek: POST $endpoint, inputPreview=\"$inputPreview\", model=$modelName, isRetry=$isRetry")
 
-            val systemPrompt = PromptBuilder.buildSystemPrompt()
+            val systemPrompt = if (isRetry) PromptBuilder.buildRetrySystemPrompt()
+                else PromptBuilder.buildSystemPrompt()
             val userPrompt = PromptBuilder.buildUserPrompt(input)
 
             val request = AIParseRequest(
@@ -148,7 +195,7 @@ class AIRepository(
                     AIMessage(role = "system", content = systemPrompt),
                     AIMessage(role = "user", content = userPrompt)
                 ),
-                temperature = 0.2
+                temperature = 0.1
             )
 
             val response: AIResponse = client.post(endpoint) {
@@ -177,6 +224,10 @@ class AIRepository(
             Log.d("AIRepository", "parseWithDeepSeek: raw response content length=${content.length}")
 
             val cleaned = cleanJsonContent(content)
+            if (cleaned == null) {
+                Log.w("AIRepository", "parseWithDeepSeek: 清理后无有效 JSON")
+                return Result.failure(AIException("AI 返回格式异常"))
+            }
             Log.d("AIRepository", "parseWithDeepSeek: cleaned JSON=${cleaned.take(200)}")
 
             val parseResult = json.decodeFromString<AIParseResult>(cleaned)
@@ -304,16 +355,15 @@ class AIException(message: String) : Exception(message)
 /**
  * Clean JSON string from markdown code blocks and surrounding text.
  * Handles ```json, ``` wrapping, and extracts JSON from text.
+ * Returns null if no valid JSON can be found.
  */
-fun cleanJsonContent(content: String): String {
+fun cleanJsonContent(content: String): String? {
     var trimmed = content.trim()
 
     // Remove leading ```json
     if (trimmed.startsWith("```json")) {
         trimmed = trimmed.removePrefix("```json").trim()
-    }
-    // Remove leading ```
-    if (trimmed.startsWith("```")) {
+    } else if (trimmed.startsWith("```")) {
         trimmed = trimmed.removePrefix("```").trim()
     }
     // Remove trailing ```
@@ -321,12 +371,24 @@ fun cleanJsonContent(content: String): String {
         trimmed = trimmed.removeSuffix("```").trim()
     }
 
+    // Try to find JSON array first (transactions might be wrapped in array directly)
+    val arrayStart = trimmed.indexOf('[')
+    val arrayEnd = trimmed.lastIndexOf(']')
+    if (arrayStart != -1 && arrayEnd > arrayStart) {
+        val arrayJson = trimmed.substring(arrayStart, arrayEnd + 1)
+        // Validate it looks like a real JSON array (starts with [{)
+        if (arrayJson.trimStart().startsWith('[')) {
+            // Wrap in transactions object
+            return "{\"transactions\":$arrayJson}"
+        }
+    }
+
     // Extract JSON between first { and last }
     val start = trimmed.indexOf('{')
     val end = trimmed.lastIndexOf('}')
 
     if (start == -1 || end == -1 || start >= end) {
-        throw IllegalArgumentException("找不到有效的 JSON")
+        return null
     }
 
     return trimmed.substring(start, end + 1)
