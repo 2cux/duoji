@@ -21,14 +21,14 @@ class SettingsRepository(private val settingsDataStore: SettingsDataStore) {
         settingsDataStore.useRealAI,
         settingsDataStore.useWarmReminder,
         settingsDataStore.monthlyBudget
-    ) { apiBaseUrl, apiKey, modelName, useRealAI, useWarmReminder, monthlyBudget ->
+    ) { args ->
         AppSettings(
-            apiBaseUrl = apiBaseUrl,
-            apiKey = apiKey,
-            modelName = modelName,
-            useRealAI = useRealAI,
-            useWarmReminder = useWarmReminder,
-            monthlyBudget = monthlyBudget
+            apiBaseUrl = args[0] as String,
+            apiKey = args[1] as String,
+            modelName = args[2] as String,
+            useRealAI = args[3] as Boolean,
+            useWarmReminder = args[4] as Boolean,
+            monthlyBudget = args[5] as Double
         )
     }
 
