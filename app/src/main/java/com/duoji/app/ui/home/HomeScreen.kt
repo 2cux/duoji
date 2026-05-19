@@ -337,29 +337,24 @@ private fun TrendRangeSelector(
         TrendRange.entries.forEach { range ->
             val label = when (range) {
                 TrendRange.LAST_7_DAYS -> "近 7 天"
-                TrendRange.LAST_14_DAYS -> "近 14 天"
                 TrendRange.CURRENT_MONTH -> "本月"
             }
             val isSelected = range == currentRange
-            FilterChip(
-                selected = isSelected,
-                onClick = { onRangeChange(range) },
-                label = {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                    )
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = WarmPrimary,
-                    selectedLabelColor = Color.White,
-                    containerColor = WarmCard,
-                    labelColor = WarmTextPrimary
-                ),
-                shape = RoundedCornerShape(14.dp),
-                border = if (isSelected) null else BorderStroke(1.dp, WarmSecondary.copy(alpha = 0.3f))
-            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(if (isSelected) WarmPrimary else WarmCard)
+                    .clickable { onRangeChange(range) }
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (isSelected) Color.White else WarmTextPrimary
+                )
+            }
         }
     }
 }

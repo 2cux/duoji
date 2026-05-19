@@ -15,7 +15,7 @@ import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 enum class TrendRange {
-    LAST_7_DAYS, LAST_14_DAYS, CURRENT_MONTH
+    LAST_7_DAYS, CURRENT_MONTH
 }
 
 data class DailyExpensePoint(
@@ -143,7 +143,6 @@ class HomeViewModel : ViewModel() {
 
         val (startDate, endDate) = when (range) {
             TrendRange.LAST_7_DAYS -> now.minusDays(6) to now
-            TrendRange.LAST_14_DAYS -> now.minusDays(13) to now
             TrendRange.CURRENT_MONTH -> now.withDayOfMonth(1) to now
         }
 
