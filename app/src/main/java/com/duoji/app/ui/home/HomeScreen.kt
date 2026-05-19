@@ -1164,10 +1164,15 @@ private fun EmptyBillEntry(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        OutlinedButton(
+                        Button(
                             onClick = onAiRecord,
                             shape = RoundedCornerShape(18.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = WarmPrimary)
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ExpenseLight,
+                                contentColor = WarmPrimary
+                            ),
+                            border = BorderStroke(1.5.dp, WarmPrimary),
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                         ) {
                             Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))

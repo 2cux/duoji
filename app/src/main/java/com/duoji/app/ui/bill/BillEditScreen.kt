@@ -3,6 +3,7 @@ package com.duoji.app.ui.bill
 import androidx.compose.animation.*
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -445,12 +446,19 @@ fun BillEditScreen(
             Spacer(Modifier.height(12.dp))
 
             // Delete button
-            OutlinedButton(
+            Button(
                 onClick = { showDeleteConfirm = true },
+                enabled = !state.isSaving,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = WarmAccent),
-                border = androidx.compose.foundation.BorderStroke(1.dp, WarmAccent.copy(alpha = 0.3f))
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = WarmCard,
+                    contentColor = WarmAccent,
+                    disabledContainerColor = WarmCard.copy(alpha = 0.6f),
+                    disabledContentColor = WarmAccent.copy(alpha = 0.4f)
+                ),
+                border = BorderStroke(1.dp, WarmAccent),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
             ) {
                 Icon(Icons.Rounded.Delete, contentDescription = null, modifier = Modifier.size(22.dp))
                 Spacer(Modifier.width(8.dp))

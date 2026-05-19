@@ -2,6 +2,7 @@ package com.duoji.app.ui.bill
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -467,10 +468,15 @@ private fun EmptyBillState(onAiRecord: () -> Unit, onManualRecord: () -> Unit) {
             Spacer(Modifier.height(20.dp))
             AnimatedSection(delayMillis = 200) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(
+                    Button(
                         onClick = onAiRecord,
                         shape = RoundedCornerShape(18.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = WarmPrimary)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = ExpenseLight,
+                            contentColor = WarmPrimary
+                        ),
+                        border = BorderStroke(1.5.dp, WarmPrimary),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                     ) {
                         Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
