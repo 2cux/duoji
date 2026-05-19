@@ -315,7 +315,7 @@ private fun HomeTrendPage(
             Spacer(Modifier.height(12.dp))
             TrendSummaryCard(summary = trendState.summary)
             Spacer(Modifier.height(12.dp))
-            TrendTipCard(points = points)
+            TrendTipCard(tip = trendState.trendTip)
         }
 
         Spacer(Modifier.height(100.dp))
@@ -649,10 +649,9 @@ private fun SummaryRow(label: String, value: String) {
 
 @Composable
 private fun TrendTipCard(
-    points: List<DailyExpensePoint>,
+    tip: String,
     modifier: Modifier = Modifier
 ) {
-    val tip = remember(points) { generateTrendTip(points) }
     if (tip.isBlank()) return
 
     Card(
@@ -678,26 +677,6 @@ private fun TrendTipCard(
                 color = WarmTextPrimary
             )
         }
-    }
-}
-
-private fun generateTrendTip(points: List<DailyExpensePoint>): String {
-    if (points.isEmpty()) return ""
-    val amounts = points.map { it.amount }
-    val total = amounts.sum()
-    if (total <= 0) return ""
-    if (points.size < 3) return "数据较少，继续记录后可获得更准确的趋势分析。"
-
-    val recent3 = points.takeLast(3)
-    val recentAvg = recent3.sumOf { it.amount } / 3.0
-    val overallAvg = total / points.size
-
-    return if (recentAvg > overallAvg * 1.15) {
-        "最近消费有上升趋势，注意控制预算"
-    } else if (recentAvg < overallAvg * 0.85) {
-        "近期消费有所下降，继续保持"
-    } else {
-        "近期消费较平稳"
     }
 }
 

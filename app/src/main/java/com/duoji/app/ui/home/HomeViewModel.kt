@@ -3,9 +3,12 @@ package com.duoji.app.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.duoji.app.DuoJiApplication
+import com.duoji.app.data.ai.TrendTipRepository
+import com.duoji.app.data.ai.TrendSummaryInput
 import com.duoji.app.data.local.entity.TransactionEntity
 import com.duoji.app.data.repository.TransactionRepository
 import com.duoji.app.data.settings.SettingsRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,7 +40,9 @@ data class ExpenseTrendUiState(
     val points: List<DailyExpensePoint> = emptyList(),
     val summary: ExpenseTrendSummary = ExpenseTrendSummary(),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val trendTip: String = "",
+    val isTrendTipLoading: Boolean = false
 )
 
 data class HomeUiState(
@@ -62,6 +67,12 @@ class HomeViewModel : ViewModel() {
 
     private val settingsRepository: SettingsRepository =
         DuoJiApplication.instance.container.settingsRepository
+
+    private val trendTipRepository = TrendTipRepository(
+        DuoJiApplication.instance.container.settingsRepository
+    )
+    private var lastTrendTipCacheKey: String? = null
+    private var trendTipJob: Job? = null
 
     private val _uiState = MutableStateFlow(HomeUiState(aiTip = getDefaultTip(0.0)))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -207,6 +218,56 @@ class HomeViewModel : ViewModel() {
         val maxDay = maxPoint?.date
         val maxAmount = safeAmount(maxPoint?.amount ?: 0.0)
 
+        // ── Compute trend tip input ──
+        val hasExpenseData = expenseTransactions.isNotEmpty()
+        val topCategoryName: String
+        val topCategoryAmount: Double
+        if (hasExpenseData) {
+            val expensesByCategory = expenseTransactions
+                .groupBy { it.category }
+                .mapValues { safeAmount(it.value.sumOf { t -> t.amount }) }
+            val top = expensesByCategory.maxByOrNull { it.value }
+            topCategoryName = top?.key ?: ""
+            topCategoryAmount = top?.value ?: 0.0
+        } else {
+            topCategoryName = ""
+            topCategoryAmount = 0.0
+        }
+
+        val trendDirection = computeTrendDirection(points)
+
+        val budget = _uiState.value.monthlyBudget
+        val monthlyExpense = _uiState.value.monthlyExpense
+        val budgetLeft = if (budget > 0 && range == TrendRange.CURRENT_MONTH) {
+            safeAmount(budget - monthlyExpense)
+        } else null
+
+        val topDayStr = if (maxPoint != null && maxPoint.amount > 0) {
+            "${maxPoint.date.monthValue}月${maxPoint.date.dayOfMonth}日"
+        } else ""
+
+        val trendInput = TrendSummaryInput(
+            range = if (range == TrendRange.LAST_7_DAYS) "近7天" else "本月",
+            totalExpense = totalAmount,
+            averageExpense = averageDailyAmount,
+            topDay = topDayStr,
+            topCategoryName = topCategoryName,
+            topCategoryAmount = topCategoryAmount,
+            trendDirection = trendDirection,
+            budgetLeft = budgetLeft,
+            hasData = hasExpenseData
+        )
+
+        val cacheKey = if (hasExpenseData) trendInput.cacheKey() else null
+        val dataChanged = hasExpenseData && cacheKey != lastTrendTipCacheKey
+        if (dataChanged) lastTrendTipCacheKey = cacheKey
+
+        val tipToShow = when {
+            !hasExpenseData -> "还没有足够数据，先轻松记一笔吧。"
+            dataChanged -> trendTipRepository.generateLocalTip(trendInput)
+            else -> _trendState.value.trendTip
+        }
+
         _trendState.value = currentState.copy(
             points = points,
             summary = ExpenseTrendSummary(
@@ -217,8 +278,19 @@ class HomeViewModel : ViewModel() {
                 recordDays = recordDays
             ),
             isLoading = false,
-            errorMessage = null
+            errorMessage = null,
+            trendTip = tipToShow,
+            isTrendTipLoading = dataChanged
         )
+
+        // Trigger AI in background if data changed
+        if (dataChanged) {
+            trendTipJob?.cancel()
+            trendTipJob = viewModelScope.launch {
+                val aiTip = trendTipRepository.generateTip(trendInput)
+                _trendState.value = _trendState.value.copy(trendTip = aiTip, isTrendTipLoading = false)
+            }
+        }
     }
 
     private fun safeAmount(value: Double): Double {
@@ -237,6 +309,23 @@ class HomeViewModel : ViewModel() {
         if (topCat == "购物") return "这个月购物记录比较多，可以看看哪些是真正需要的。"
         if (expense < 500) return "这个月消费节奏还不错。"
         return "这个月已经支出 ${expense.toLong()} 元了，可以看看都花在哪了。"
+    }
+
+    private fun computeTrendDirection(points: List<DailyExpensePoint>): String {
+        val amounts = points.map { it.amount }
+        if (amounts.size < 3) return "平稳"
+        val recent3 = amounts.takeLast(3)
+        val recentAvg = recent3.sum() / 3.0
+        val overallAvg = amounts.sum() / amounts.size
+        return if (recentAvg > overallAvg * 1.15) "上升"
+        else if (recentAvg < overallAvg * 0.85) "下降"
+        else "平稳"
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        trendTipJob?.cancel()
+        trendTipRepository.cleanup()
     }
 
     companion object {
