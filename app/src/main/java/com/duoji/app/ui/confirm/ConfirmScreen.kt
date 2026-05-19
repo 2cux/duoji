@@ -160,8 +160,9 @@ fun ConfirmScreen(
                     }
                 }
 
-                // Local fallback warning
-                if (ParseResultStore.usingLocalFallback) {
+                // Local fallback warning with specific reason
+                val fallbackReason = ParseResultStore.localFallbackReason
+                if (fallbackReason != null) {
                     Spacer(Modifier.height(12.dp))
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -181,7 +182,7 @@ fun ConfirmScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text = "AI 识别暂时不可用，当前使用本地模式解析，分类可能不准确。请确认后保存。",
+                                text = fallbackReason,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = WarmTextPrimary
                             )

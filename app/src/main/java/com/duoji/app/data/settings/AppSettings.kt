@@ -50,9 +50,7 @@ class SettingsDataStore(private val context: Context) {
     ) {
         context.dataStore.edit { prefs ->
             prefs[KEY_API_BASE_URL] = apiBaseUrl
-            if (apiKey.isNotBlank()) {
-                prefs[KEY_API_KEY] = apiKey
-            }
+            prefs[KEY_API_KEY] = apiKey
             prefs[KEY_MODEL_NAME] = modelName
             prefs[KEY_USE_REAL_AI] = useRealAI
             prefs[KEY_USE_WARM_REMINDER] = useWarmReminder
@@ -67,9 +65,7 @@ class SettingsDataStore(private val context: Context) {
     ) {
         context.dataStore.edit { prefs ->
             prefs[KEY_API_BASE_URL] = apiBaseUrl
-            if (apiKey.isNotBlank()) {
-                prefs[KEY_API_KEY] = apiKey
-            }
+            prefs[KEY_API_KEY] = apiKey
             prefs[KEY_MODEL_NAME] = modelName
             prefs[KEY_USE_REAL_AI] = useRealAI
         }

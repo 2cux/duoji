@@ -15,18 +15,23 @@ import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 class AIRepository(
     private val settingsRepository: SettingsRepository
 ) {
     /**
-     * Whether the most recent successful parse() call fell back to local mock parsing.
-     * Reset to false before each parse(), set to true when local fallback is used.
-     * Only meaningful immediately after parse() returns successfully.
+     * Reason for falling back to local parsing after a failed remote AI attempt.
+     * null means remote AI succeeded (no fallback).
+     * Non-null means local fallback was used, with the specific reason.
+     * Reset to null before each parse().
      */
     @Volatile
-    var lastResultUsedLocalFallback: Boolean = false
+    var lastFallbackReason: String? = null
         private set
+
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
@@ -48,7 +53,7 @@ class AIRepository(
      * Uses DeepSeek if configured and enabled, otherwise falls back to LocalMockParser.
      */
     suspend fun parse(input: String): Result<List<TransactionDraft>> {
-        lastResultUsedLocalFallback = false
+        lastFallbackReason = null
         if (input.isBlank()) {
             return Result.failure(IllegalArgumentException("请输入记账内容"))
         }
@@ -60,34 +65,64 @@ class AIRepository(
                 && settings.apiKey.isNotBlank()
                 && settings.modelName.isNotBlank()
 
-        Log.d("AIRepository", "parse: canUseDeepSeek=$canUseDeepSeek, useRealAI=${settings.useRealAI}, " +
-                "apiKey=${if (settings.apiKey.isNotBlank()) "***${settings.apiKey.takeLast(4)}" else "empty"}, " +
-                "model=${settings.modelName}, baseUrl=${settings.apiBaseUrl}")
+        val maskedKey = if (settings.apiKey.isNotBlank()) {
+            "sk-****${settings.apiKey.takeLast(4)}"
+        } else {
+            "empty"
+        }
+
+        Log.d("AIRepository", "parse: canUseDeepSeek=$canUseDeepSeek," +
+                " useRealAI=${settings.useRealAI}," +
+                " baseUrl=${settings.apiBaseUrl}," +
+                " model=${settings.modelName}," +
+                " apiKey=$maskedKey," +
+                " inputLength=${input.length}")
 
         if (!canUseDeepSeek) {
             val reason = when {
-                !settings.useRealAI -> "useRealAI 未开启"
-                settings.apiKey.isBlank() -> "API Key 为空"
-                settings.apiBaseUrl.isBlank() -> "API Base URL 为空"
-                settings.modelName.isBlank() -> "模型名称为空"
-                else -> "未知原因"
+                !settings.useRealAI -> "AI 配置未完成（开关未开启）"
+                settings.apiKey.isBlank() -> "AI 配置未完成（API Key 为空）"
+                settings.apiBaseUrl.isBlank() -> "AI 配置未完成（API Base URL 为空）"
+                settings.modelName.isBlank() -> "AI 配置未完成（模型名称为空）"
+                else -> "AI 配置未完成"
             }
-            Log.w("AIRepository", "parse: 使用本地解析（原因：$reason）")
-            lastResultUsedLocalFallback = true
+            Log.w("AIRepository", "parse: 跳过远程 AI，使用本地解析。原因：$reason")
+            lastFallbackReason = "AI 配置未完成"
             return parseLocal(input)
         }
 
-        // Try DeepSeek, fallback to local on any failure
+        Log.d("AIRepository", "parse: 开始远程 AI 解析，inputLength=${input.length}")
         val deepSeekResult = parseWithDeepSeek(input, settings.apiBaseUrl, settings.apiKey, settings.modelName)
         if (deepSeekResult.isSuccess) {
-            Log.d("AIRepository", "parse: DeepSeek 解析成功")
+            Log.d("AIRepository", "parse: 远程 AI 解析成功")
             return deepSeekResult
         }
 
-        val errorMsg = deepSeekResult.exceptionOrNull()?.message ?: "未知错误"
-        Log.w("AIRepository", "parse: DeepSeek 失败（$errorMsg），降级到本地解析")
-        lastResultUsedLocalFallback = true
+        val exception = deepSeekResult.exceptionOrNull()
+        val errorMsg = exception?.message ?: "未知错误"
+        val fallbackReason = buildFallbackReason(errorMsg)
+        lastFallbackReason = fallbackReason
+        Log.w("AIRepository", "parse: 远程 AI 失败（$fallbackReason），降级到本地解析")
         return parseLocal(input)
+    }
+
+    /**
+     * Map an error message from parseWithDeepSeek to a user-facing fallback reason shown in ConfirmScreen.
+     */
+    private fun buildFallbackReason(errorMsg: String): String = when {
+        errorMsg.contains("API Key") || errorMsg.contains("api_key") ||
+        errorMsg.contains("authentication") || errorMsg.contains("Unauthorized") ||
+        errorMsg.contains("401") || errorMsg.contains("403") -> "API Key 可能无效，已使用本地解析"
+        errorMsg.contains("网络连接") || errorMsg.contains("connect") ||
+        errorMsg.contains("refused") || errorMsg.contains("UnknownHost") ||
+        errorMsg.contains("econnrefused", ignoreCase = true) -> "网络连接失败，已使用本地解析"
+        errorMsg.contains("超时") || errorMsg.contains("timeout") ||
+        errorMsg.contains("timed out") -> "AI 响应超时，已使用本地解析"
+        errorMsg.contains("格式异常") || errorMsg.contains("JSON") ||
+        errorMsg.contains("Serialization") -> "AI 返回格式异常，已使用本地解析"
+        errorMsg.contains("为空") || errorMsg.contains("未识别") ||
+        errorMsg.contains("empty") -> "AI 未识别出账单，已使用本地解析"
+        else -> "AI 识别暂时不可用（${errorMsg}），已使用本地解析"
     }
 
     private suspend fun parseWithDeepSeek(
@@ -98,7 +133,7 @@ class AIRepository(
     ): Result<List<TransactionDraft>> {
         return try {
             val endpoint = apiBaseUrl.trimEnd('/') + "/chat/completions"
-            Log.d("AIRepository", "parseWithDeepSeek: POST $endpoint (input=\"$input\")")
+            Log.d("AIRepository", "parseWithDeepSeek: POST $endpoint, inputLength=${input.length}, model=$modelName")
 
             val systemPrompt = PromptBuilder.buildSystemPrompt()
             val userPrompt = PromptBuilder.buildUserPrompt(input)
@@ -119,12 +154,21 @@ class AIRepository(
             }.body()
 
             response.error?.let { error ->
-                Log.e("AIRepository", "parseWithDeepSeek: API returned error=${error.message}")
-                return Result.failure(AIException("API 错误：${error.message}，已切回本地解析"))
+                val errorDetail = error.message ?: "unknown"
+                Log.e("AIRepository", "parseWithDeepSeek: API returned error=$errorDetail")
+                val isAuthError = errorDetail.contains("Invalid API") ||
+                        errorDetail.contains("api_key") ||
+                        errorDetail.contains("authentication") ||
+                        errorDetail.contains("401") ||
+                        errorDetail.contains("403")
+                return Result.failure(
+                    if (isAuthError) AIException("API Key 可能无效")
+                    else AIException("AI 服务返回错误：$errorDetail")
+                )
             }
 
             val content = response.choices.firstOrNull()?.message?.content
-                ?: return Result.failure(AIException("AI 返回为空，已切回本地解析"))
+                ?: return Result.failure(AIException("AI 返回为空"))
 
             Log.d("AIRepository", "parseWithDeepSeek: raw response content length=${content.length}")
 
@@ -135,7 +179,7 @@ class AIRepository(
 
             if (parseResult.transactions.isEmpty()) {
                 Log.w("AIRepository", "parseWithDeepSeek: AI returned empty transactions")
-                return Result.failure(AIException("未能识别出账单，已切回本地解析"))
+                return Result.failure(AIException("AI 未识别出账单"))
             }
 
             val drafts = parseResult.transactions.map { it.toTransactionDraft() }
@@ -144,13 +188,34 @@ class AIRepository(
 
         } catch (e: kotlinx.serialization.SerializationException) {
             Log.e("AIRepository", "parseWithDeepSeek: JSON 解析失败", e)
-            Result.failure(AIException("API 返回格式异常，已切回本地解析"))
+            Result.failure(AIException("AI 返回格式异常"))
+        } catch (e: HttpRequestTimeoutException) {
+            Log.e("AIRepository", "parseWithDeepSeek: 请求超时", e)
+            Result.failure(AIException("AI 响应超时"))
+        } catch (e: SocketTimeoutException) {
+            Log.e("AIRepository", "parseWithDeepSeek: Socket 超时", e)
+            Result.failure(AIException("AI 响应超时"))
+        } catch (e: ConnectException) {
+            Log.e("AIRepository", "parseWithDeepSeek: 连接被拒绝", e)
+            Result.failure(AIException("网络连接失败"))
+        } catch (e: UnknownHostException) {
+            Log.e("AIRepository", "parseWithDeepSeek: DNS 解析失败", e)
+            Result.failure(AIException("网络连接失败"))
         } catch (e: Exception) {
             Log.e("AIRepository", "parseWithDeepSeek: 请求异常 ${e.javaClass.simpleName}: ${e.message}", e)
-            if (e is AIException) {
-                Result.failure(e)
-            } else {
-                Result.failure(AIException("DeepSeek 请求失败，已切回本地解析"))
+            val msg = e.message ?: ""
+            when {
+                msg.contains("401") || msg.contains("403") || msg.contains("Unauthorized") ||
+                msg.contains("Invalid API") || msg.contains("authentication") ||
+                msg.contains("api_key") -> Result.failure(AIException("API Key 可能无效"))
+                msg.contains("timeout", ignoreCase = true) ||
+                msg.contains("timed out", ignoreCase = true) -> Result.failure(AIException("AI 响应超时"))
+                msg.contains("connect", ignoreCase = true) ||
+                msg.contains("refused", ignoreCase = true) ||
+                msg.contains("network", ignoreCase = true) ||
+                msg.contains("econnrefused", ignoreCase = true) ||
+                msg.contains("UnknownHost", ignoreCase = true) -> Result.failure(AIException("网络连接失败"))
+                else -> Result.failure(AIException("DeepSeek 请求失败"))
             }
         }
     }
