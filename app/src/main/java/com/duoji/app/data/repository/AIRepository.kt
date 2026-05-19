@@ -6,6 +6,8 @@ import com.duoji.app.data.ai.PromptBuilder
 import com.duoji.app.data.model.*
 import com.duoji.app.data.settings.SettingsRepository
 import io.ktor.client.*
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -88,14 +90,15 @@ class AIRepository(
             }
             Log.w("AIRepository", "parse: 跳过远程 AI，使用本地解析。原因：$reason")
             lastFallbackReason = "AI 配置未完成"
-            return parseLocal(input)
+            Log.d("AIRepository", "parse: 本地解析")
+            return parseLocal(input).map { Companion.applyInheritance(it) }
         }
 
-        Log.d("AIRepository", "parse: 开始远程 AI 解析，inputLength=${input.length}")
+        Log.d("AIRepository", "parse: 远程 AI 解析, model=${settings.modelName}, inputLength=${input.length}")
         val deepSeekResult = parseWithDeepSeek(input, settings.apiBaseUrl, settings.apiKey, settings.modelName)
         if (deepSeekResult.isSuccess) {
             Log.d("AIRepository", "parse: 远程 AI 解析成功")
-            return deepSeekResult
+            return deepSeekResult.map { Companion.applyInheritance(it) }
         }
 
         val exception = deepSeekResult.exceptionOrNull()
@@ -103,7 +106,8 @@ class AIRepository(
         val fallbackReason = buildFallbackReason(errorMsg)
         lastFallbackReason = fallbackReason
         Log.w("AIRepository", "parse: 远程 AI 失败（$fallbackReason），降级到本地解析")
-        return parseLocal(input)
+        Log.d("AIRepository", "parse: 降级本地解析")
+        return parseLocal(input).map { Companion.applyInheritance(it) }
     }
 
     /**
@@ -235,6 +239,59 @@ class AIRepository(
             Log.e("AIRepository", "parseLocal: 本地解析异常", e)
             Result.failure(AIException("本地解析失败，可以手动记一笔。"))
         }
+    }
+
+    /**
+     * Apply category and date inheritance across parsed drafts.
+     * - Category: if "其他" or blank, inherits from previous draft with a clear category
+     * - Date: if blank, inherits from previous draft; if none, uses today
+     */
+    companion object {
+        internal fun applyInheritance(drafts: List<TransactionDraft>): List<TransactionDraft> {
+            var lastCategory: String? = null
+            var lastDate: String? = null
+            val todayIso = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            val todayTime = "${todayIso}T12:00:00+08:00"
+            val modified = mutableListOf<String>()
+
+            val result = drafts.map { draft ->
+                var newCategory = draft.category
+                var newOccurredAt = draft.occurredAt
+                val changes = mutableListOf<String>()
+
+                // Category inheritance: only when category is "其他" or blank, and we have a previous category
+                if ((newCategory == "其他" || newCategory.isBlank()) && lastCategory != null) {
+                    newCategory = lastCategory!!
+                    changes.add("cat:${draft.category}->$newCategory")
+                } else if (newCategory != "其他" && newCategory.isNotBlank()) {
+                    lastCategory = newCategory
+                }
+
+                // Date inheritance: only when occurredAt is blank
+                if (newOccurredAt.isBlank()) {
+                    newOccurredAt = lastDate ?: todayTime
+                    changes.add("date:blank->$newOccurredAt")
+                } else {
+                    lastDate = newOccurredAt
+                }
+
+                if (changes.isNotEmpty()) {
+                    modified.addAll(changes)
+                }
+
+                if (newCategory == draft.category && newOccurredAt == draft.occurredAt) {
+                    draft
+                } else {
+                    draft.copy(category = newCategory, occurredAt = newOccurredAt)
+                }
+            }
+
+            if (modified.isNotEmpty()) {
+                Log.d("AIRepository", "applyInheritance: ${modified.size} changes: $modified")
+            }
+            return result
+        }
+
     }
 
     fun cleanup() {
