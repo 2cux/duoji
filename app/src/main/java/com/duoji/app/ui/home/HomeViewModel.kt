@@ -48,6 +48,7 @@ data class HomeUiState(
     val monthlyBudget: Double = -1.0,
     val remainingBudget: Double = 0.0,
     val averageDailyExpense: Double = 0.0,
+    val expenseDaysCount: Int = 0,
     val topCategories: List<Pair<String, Double>> = emptyList(),
     val transactionCount: Int = 0,
     val recentTransactions: List<TransactionEntity> = emptyList(),
@@ -88,8 +89,8 @@ class HomeViewModel : ViewModel() {
             settingsRepository.settingsFlow.collect { settings ->
                 val budget = settings.monthlyBudget
                 val expense = _uiState.value.monthlyExpense
-                val daysPassed = LocalDate.now().dayOfMonth
-                val avgDaily = safeDiv(expense, daysPassed.toDouble())
+                val expenseDays = _uiState.value.expenseDaysCount
+                val avgDaily = safeDiv(expense, expenseDays.toDouble())
                 val remaining = if (budget > 0) safeAmount(budget - expense) else 0.0
                 _uiState.value = _uiState.value.copy(
                     monthlyBudget = budget,
@@ -137,8 +138,12 @@ class HomeViewModel : ViewModel() {
         val count = transactions.size
 
         val currentBudget = _uiState.value.monthlyBudget
-        val daysPassed = now.dayOfMonth
-        val avgDaily = safeDiv(monthlyExpense, daysPassed.toDouble())
+        val expenseDaysCount = transactions
+            .filter { it.type == "expense" }
+            .map { TransactionRepository.millisToLocalDate(it.occurredAt) }
+            .distinct()
+            .count()
+        val avgDaily = safeDiv(monthlyExpense, expenseDaysCount.toDouble())
         val remaining = if (currentBudget > 0) safeAmount(currentBudget - monthlyExpense) else 0.0
 
         _uiState.value = HomeUiState(
@@ -149,6 +154,7 @@ class HomeViewModel : ViewModel() {
             monthlyBudget = currentBudget,
             remainingBudget = remaining,
             averageDailyExpense = avgDaily,
+            expenseDaysCount = expenseDaysCount,
             topCategories = expenseByCategory,
             transactionCount = count,
             recentTransactions = _uiState.value.recentTransactions,
@@ -195,12 +201,11 @@ class HomeViewModel : ViewModel() {
         }
 
         val totalAmount = safeAmount(points.sumOf { it.amount })
-        val dayCount = points.size
-        val averageDailyAmount = safeDiv(totalAmount, dayCount.toDouble())
+        val recordDays = points.count { it.amount > 0 }
+        val averageDailyAmount = safeDiv(totalAmount, recordDays.toDouble())
         val maxPoint = if (points.isEmpty()) null else points.maxByOrNull { safeAmount(it.amount) }
         val maxDay = maxPoint?.date
         val maxAmount = safeAmount(maxPoint?.amount ?: 0.0)
-        val recordDays = points.count { it.amount > 0 }
 
         _trendState.value = currentState.copy(
             points = points,
