@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.duoji.app.data.store.ParseResultStore
 import com.duoji.app.ui.components.animation.AnimatedSection
 import com.duoji.app.ui.theme.*
 
@@ -31,7 +32,11 @@ fun RecordScreen(
 
     LaunchedEffect(uiState.parsedSuccessfully) {
         if (uiState.parsedSuccessfully) {
-            onNavigateToConfirm()
+            if (ParseResultStore.drafts.isNotEmpty()) {
+                onNavigateToConfirm()
+            } else {
+                viewModel.resetParseState()
+            }
         }
     }
 

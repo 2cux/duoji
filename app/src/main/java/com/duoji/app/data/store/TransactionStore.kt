@@ -95,4 +95,9 @@ object ParseResultStore {
      * ConfirmScreen reads this to show a specific warning instead of a generic one.
      */
     var localFallbackReason: String? = null
+
+    fun clear() {
+        drafts = emptyList()
+        localFallbackReason = null
+    }
 }

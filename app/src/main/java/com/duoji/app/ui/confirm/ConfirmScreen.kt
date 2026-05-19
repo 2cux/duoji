@@ -110,6 +110,7 @@ fun ConfirmScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
+                    ParseResultStore.clear()
                     showDiscardDialog = false
                     onNavigateBack()
                 }) {
@@ -369,7 +370,10 @@ fun ConfirmScreen(
 
                 // Secondary discard button
                 OutlinedButton(
-                    onClick = { onNavigateBack() },
+                    onClick = {
+                        ParseResultStore.clear()
+                        onNavigateBack()
+                    },
                     enabled = !uiState.isSaving,
                     modifier = Modifier
                         .fillMaxWidth()
