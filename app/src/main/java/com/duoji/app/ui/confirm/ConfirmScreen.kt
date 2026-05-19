@@ -2,6 +2,8 @@ package com.duoji.app.ui.confirm
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -47,6 +49,7 @@ fun ConfirmScreen(
 
     // Track which indices are being deleted (for exit animation)
     val deletingIndices = remember { mutableStateOf(setOf<Int>()) }
+    var showDiscardDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.saveSuccess) {
         if (uiState.saveSuccess) {
@@ -60,6 +63,10 @@ fun ConfirmScreen(
             android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
             viewModel.clearSaveError()
         }
+    }
+
+    BackHandler(enabled = transactions.isNotEmpty()) {
+        showDiscardDialog = true
     }
 
     if (uiState.showDeleteConfirm) {
@@ -85,6 +92,33 @@ fun ConfirmScreen(
             dismissButton = {
                 TextButton(onClick = { viewModel.cancelDelete() }) {
                     Text("取消", color = WarmTextSecondary)
+                }
+            },
+            containerColor = WarmCard,
+            shape = RoundedCornerShape(24.dp)
+        )
+    }
+
+    if (showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiscardDialog = false },
+            title = {
+                Text("放弃保存？", style = MaterialTheme.typography.titleLarge)
+            },
+            text = {
+                Text("当前识别结果还未保存，确定不保存并返回吗？", style = MaterialTheme.typography.bodyMedium)
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDiscardDialog = false
+                    onNavigateBack()
+                }) {
+                    Text("不保存返回", color = WarmAccent, fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscardDialog = false }) {
+                    Text("继续编辑", color = WarmTextSecondary)
                 }
             },
             containerColor = WarmCard,
@@ -127,7 +161,13 @@ fun ConfirmScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        if (transactions.isNotEmpty()) {
+                            showDiscardDialog = true
+                        } else {
+                            onNavigateBack()
+                        }
+                    }) {
                         Icon(Icons.Rounded.ArrowBack, contentDescription = "返回", tint = WarmTextPrimary)
                     }
                 },
@@ -322,6 +362,31 @@ fun ConfirmScreen(
                                 Text("确认保存全部", style = MaterialTheme.typography.labelLarge)
                             }
                         }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // Secondary discard button
+                OutlinedButton(
+                    onClick = { onNavigateBack() },
+                    enabled = !uiState.isSaving,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = WarmTextSecondary
+                    ),
+                    border = BorderStroke(1.dp, WarmSecondary)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(Icons.Rounded.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("不保存，返回修改", style = MaterialTheme.typography.labelLarge)
                     }
                 }
                 Spacer(Modifier.height(32.dp))
