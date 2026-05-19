@@ -609,6 +609,7 @@ private fun timeGreeting(): String {
 }
 
 private fun formatAmount(amount: Double): String {
+    if (amount.isNaN() || amount.isInfinite()) return "0"
     return if (amount == amount.toLong().toDouble()) {
         amount.toLong().toString()
     } else {

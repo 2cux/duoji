@@ -15,7 +15,8 @@ data class RecordUiState(
     val inputText: String = "",
     val isProcessing: Boolean = false,
     val error: String? = null,
-    val parsedSuccessfully: Boolean = false
+    val parsedSuccessfully: Boolean = false,
+    val usingLocalFallback: Boolean = false
 )
 
 class RecordViewModel : ViewModel() {
@@ -53,9 +54,11 @@ class RecordViewModel : ViewModel() {
             result.fold(
                 onSuccess = { drafts ->
                     ParseResultStore.drafts = drafts
+                    ParseResultStore.usingLocalFallback = repository.lastResultUsedLocalFallback
                     _uiState.value = _uiState.value.copy(
                         isProcessing = false,
-                        parsedSuccessfully = true
+                        parsedSuccessfully = true,
+                        usingLocalFallback = repository.lastResultUsedLocalFallback
                     )
                 },
                 onFailure = { error ->
