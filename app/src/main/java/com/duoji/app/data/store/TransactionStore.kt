@@ -89,6 +89,10 @@ object TransactionStore {
  */
 object ParseResultStore {
     var drafts: List<TransactionDraft> = emptyList()
-    /** Whether the parse result came from local fallback (AI was configured but failed) */
-    var usingLocalFallback: Boolean = false
+    /**
+     * Reason for local fallback, or null if remote AI succeeded.
+     * Set to a descriptive message like "网络连接失败，已使用本地解析" when fallback is used.
+     * ConfirmScreen reads this to show a specific warning instead of a generic one.
+     */
+    var localFallbackReason: String? = null
 }

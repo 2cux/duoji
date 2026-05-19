@@ -8,7 +8,8 @@ data class AppSettings(
     val apiKey: String = "",
     val modelName: String = "deepseek-v4-flash",
     val useRealAI: Boolean = false,
-    val useWarmReminder: Boolean = true
+    val useWarmReminder: Boolean = true,
+    val monthlyBudget: Double = -1.0 // -1 means not set
 )
 
 class SettingsRepository(private val settingsDataStore: SettingsDataStore) {
@@ -18,14 +19,16 @@ class SettingsRepository(private val settingsDataStore: SettingsDataStore) {
         settingsDataStore.apiKey,
         settingsDataStore.modelName,
         settingsDataStore.useRealAI,
-        settingsDataStore.useWarmReminder
-    ) { apiBaseUrl, apiKey, modelName, useRealAI, useWarmReminder ->
+        settingsDataStore.useWarmReminder,
+        settingsDataStore.monthlyBudget
+    ) { apiBaseUrl, apiKey, modelName, useRealAI, useWarmReminder, monthlyBudget ->
         AppSettings(
             apiBaseUrl = apiBaseUrl,
             apiKey = apiKey,
             modelName = modelName,
             useRealAI = useRealAI,
-            useWarmReminder = useWarmReminder
+            useWarmReminder = useWarmReminder,
+            monthlyBudget = monthlyBudget
         )
     }
 
@@ -49,5 +52,9 @@ class SettingsRepository(private val settingsDataStore: SettingsDataStore) {
 
     suspend fun clearApiKey() {
         settingsDataStore.clearApiKey()
+    }
+
+    suspend fun saveMonthlyBudget(budget: Double) {
+        settingsDataStore.saveMonthlyBudget(budget)
     }
 }

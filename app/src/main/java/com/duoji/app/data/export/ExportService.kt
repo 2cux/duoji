@@ -12,7 +12,7 @@ import java.time.format.DateTimeFormatter
 class ExportService(private val context: Context) {
 
     private fun getExportDir(): File {
-        val dir = File(context.getExternalFilesDir(null), "exports")
+        val dir = File(context.cacheDir, "exports")
         if (!dir.exists()) dir.mkdirs()
         return dir
     }
@@ -24,7 +24,7 @@ class ExportService(private val context: Context) {
             val file = File(getExportDir(), "duoji_transactions_${timestamp}.csv")
             file.writeText(content, Charsets.UTF_8)
             shareFile(file, "text/csv")
-            Result.success("CSV 已导出到: ${file.absolutePath}")
+            Result.success("CSV 已生成，正在打开分享…")
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -37,7 +37,7 @@ class ExportService(private val context: Context) {
             val file = File(getExportDir(), "duoji_transactions_${timestamp}.json")
             file.writeText(content, Charsets.UTF_8)
             shareFile(file, "application/json")
-            Result.success("JSON 已导出到: ${file.absolutePath}")
+            Result.success("JSON 已生成，正在打开分享…")
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -53,8 +53,9 @@ class ExportService(private val context: Context) {
             type = mimeType
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        context.startActivity(Intent.createChooser(shareIntent, "导出账单"))
+        val chooser = Intent.createChooser(shareIntent, "导出账单")
+        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(chooser)
     }
 }
